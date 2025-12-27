@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lottie/lottie.dart';
+import 'package:stride/common/app_loader.dart';
 import 'package:stride/auth/auth_service.dart';
+import 'package:stride/selection/selection_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,12 +19,26 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
   bool _obscure = true;
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleAuth(Future userFuture) async {
     setState(() => _isLoading = true);
     try {
       final user = await userFuture;
       if (user != null && mounted) {
-        Navigator.pop(context); // back to login or next flow
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const SelectionScreen(),
+          ),
+              (route) => false,
+        );
       }
     } catch (e) {
       _showError(e.toString());
@@ -56,31 +72,38 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 30),
 
-              // Illustration
+              /// 🔥 SAME LOTTIE (CONTINUOUS + BIG)
               Center(
-                child: SvgPicture.asset(
-                  'assets/illustrations/secure_signup.svg',
-                  height: 240,
+                child: Lottie.asset(
+                  'assets/animations/login_animation.json',
+                  height: 290,
+                  repeat: true,
+                  animate: true,
+                  fit: BoxFit.contain,
+                  frameRate: FrameRate.max,
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 30),
 
               const Text(
                 'Create Account',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 7),
 
               Text(
                 'Start your journey toward discipline.',
                 style: TextStyle(color: Colors.grey.shade600),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 25),
 
               _inputField(
                 controller: nameController,
@@ -88,7 +111,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 icon: Icons.person_outline,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               _inputField(
                 controller: emailController,
@@ -96,7 +119,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 icon: Icons.email_outlined,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               _inputField(
                 controller: passwordController,
@@ -108,17 +131,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     _obscure
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    size: 20,
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
 
+              /// SIGNUP BUTTON
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 54,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
@@ -130,56 +153,25 @@ class _SignupScreenState extends State<SignupScreen> {
                       ? null
                       : () => _handleAuth(
                     AuthService.createUserWithEmailAndPassword(
-                      emailController.text,
-                      passwordController.text,
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
                     ),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Create Account'),
+                      ? const AppLoader(message: "Creating account…")
+                      : const Text(
+                    'Create Account',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
 
               const SizedBox(height: 30),
 
-              // Divider
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey.shade300)),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('Or sign up with'),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey.shade300)),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // 🔹 SOCIAL ICONS (SAME AS LOGIN)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _SocialSvg(
-                    asset: 'assets/icons/google.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithGoogle()),
-                  ),
-                  _SocialSvg(
-                    asset: 'assets/icons/facebook.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithFacebook()),
-                  ),
-                  _SocialSvg(
-                    asset: 'assets/icons/github.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithGitHub()),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
+              /// LOGIN REDIRECT
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -194,7 +186,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
             ],
           ),
         ),
@@ -222,40 +214,6 @@ class _SignupScreenState extends State<SignupScreen> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.black),
-        ),
-      ),
-    );
-  }
-}
-
-class _SocialSvg extends StatelessWidget {
-  final String asset;
-  final VoidCallback onTap;
-
-  const _SocialSvg({
-    required this.asset,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Center(
-          child: SvgPicture.asset(
-            asset,
-            width: 28,
-            height: 28,
-            fit: BoxFit.contain,
-          ),
         ),
       ),
     );

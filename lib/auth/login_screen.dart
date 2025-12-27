@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lottie/lottie.dart';
+
+import 'package:stride/common/app_loader.dart';
 import 'package:stride/auth/auth_service.dart';
 import 'package:stride/auth/signup_screen.dart';
-import 'package:stride/next/next_screen.dart';
+import 'package:stride/selection/selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,19 +21,35 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscure = true;
 
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleAuth(Future userFuture) async {
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
+
     try {
       final user = await userFuture;
-      if (user != null && mounted) {
-        Navigator.pushReplacement(
+      if (!mounted) return;
+
+      if (user != null) {
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const NextScreen()),
+          MaterialPageRoute(
+            builder: (_) => SelectionScreen(), // ❌ NO const
+          ),
+              (route) => false,
         );
       }
     } catch (e) {
       _showError(e.toString());
     }
+
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -60,30 +79,38 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 30),
 
+              /// 🔥 CONTINUOUS LOTTIE
               Center(
-                child: SvgPicture.asset(
-                  'assets/illustrations/secure_login.svg',
-                  height: 260,
+                child: Lottie.asset(
+                  'assets/animations/login_animation.json',
+                  height: 300,
+                  repeat: true,
+                  animate: true,
+                  fit: BoxFit.contain,
+                  frameRate: FrameRate.max,
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 25),
 
               const Text(
                 'Welcome Back',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 7),
 
               Text(
                 'Enter your details to continue your quest.',
                 style: TextStyle(color: Colors.grey.shade600),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 25),
 
               _inputField(
                 controller: emailController,
@@ -91,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 icon: Icons.email_outlined,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               _inputField(
                 controller: passwordController,
@@ -103,17 +130,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     _obscure
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    size: 20,
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
 
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Forgot password?',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// LOGIN BUTTON
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 54,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
@@ -125,23 +162,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? null
                       : () => _handleAuth(
                     AuthService.signInWithEmailAndPassword(
-                      emailController.text,
-                      passwordController.text,
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
                     ),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Enter Stride'),
+                      ? const AppLoader(message: "Authenticating…")
+                      : const Text(
+                    'Enter Stride',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 25),
 
+              /// OR
               Row(
                 children: [
                   Expanded(child: Divider(color: Colors.grey.shade300)),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 10),
                     child: Text('Or sign in with'),
                   ),
                   Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -150,29 +194,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
+              /// 🌐 SOCIAL LOGIN — FIXED
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _SocialSvg(
+                  _SocialIcon(
                     asset: 'assets/icons/google.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithGoogle()),
+                    gap: 30,
+                    onTap: () => _handleAuth(
+                      AuthService.signInWithGoogle(),
+                    ),
                   ),
-                  _SocialSvg(
+                  _SocialIcon(
                     asset: 'assets/icons/facebook.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithFacebook()),
+                    gap: 30,
+                    onTap: () => _handleAuth(
+                      AuthService.signInWithFacebook(),
+                    ),
                   ),
-                  _SocialSvg(
+                  _SocialIcon(
                     asset: 'assets/icons/github.svg',
-                    onTap: () =>
-                        _handleAuth(AuthService.signInWithGitHub()),
+                    onTap: () => _handleAuth(
+                      AuthService.signInWithGitHub(),
+                    ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
 
+              /// SIGN UP
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -182,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => SignupScreen(),
+                          builder: (_) => SignupScreen(), // ❌ NO const
                         ),
                       );
                     },
@@ -193,6 +244,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+
+              const SizedBox(height: 28),
             ],
           ),
         ),
@@ -226,36 +279,42 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _SocialSvg extends StatelessWidget {
+/// 🔹 SOCIAL ICON WIDGET
+class _SocialIcon extends StatelessWidget {
   final String asset;
   final VoidCallback onTap;
+  final double gap;
 
-  const _SocialSvg({
+  const _SocialIcon({
     required this.asset,
     required this.onTap,
+    this.gap = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Center(
-          child: SvgPicture.asset(
-            asset,
-            width: 28,
-            height: 28,
-            fit: BoxFit.contain,
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Center(
+              child: SvgPicture.asset(
+                asset,
+                width: 28,
+                height: 28,
+              ),
+            ),
           ),
         ),
-      ),
+        SizedBox(width: gap),
+      ],
     );
   }
 }

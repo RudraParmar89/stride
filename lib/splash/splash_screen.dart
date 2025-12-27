@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,33 +30,25 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeOutCubic,
     );
 
-    _scale = Tween<double>(
-      begin: 0.97,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
+    _scale = Tween<double>(begin: 0.97, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
 
-    // Silence
+    // Logo fade-in
     Timer(const Duration(milliseconds: 600), () {
       _controller.forward();
     });
 
-    // Unified background + logo transition
+    // Background switch
     Timer(const Duration(milliseconds: 1800), () {
-      setState(() {
-        _darkBackground = false;
-      });
+      if (!mounted) return;
+      setState(() => _darkBackground = false);
     });
 
-    // Exit → Onboarding
+    // Navigate → Onboarding
     Timer(const Duration(milliseconds: 2600), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/onboarding');
     });
   }
 
@@ -82,22 +73,20 @@ class _SplashScreenState extends State<SplashScreen>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // White logo (for black background)
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 500),
                     opacity: _darkBackground ? 1 : 0,
                     child: Image.asset(
                       'assets/logo/stride_light.png',
-                      width: 120,
+                      width: 270,
                     ),
                   ),
-                  // Dark logo (for white background)
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 500),
                     opacity: _darkBackground ? 0 : 1,
                     child: Image.asset(
                       'assets/logo/stride_dark.png',
-                      width: 120,
+                      width: 270,
                     ),
                   ),
                 ],
