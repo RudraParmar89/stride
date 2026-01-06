@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../controllers/xp_controller.dart';
+import '../../controllers/xp_controller.dart';
 
 import 'dashboard_header.dart';
 import 'dashboard_task_tile.dart';
 
-import '../widgets/dashboard_action_grid.dart';
-import '../widgets/daily_goal_card.dart';
-import '../widgets/xp_trend_chip.dart';
+import '../../widgets/dashboard_action_grid.dart';
+import '../../widgets/daily_goal_card.dart';
+import '../dashboard/widgets/xp_trend_chip.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});

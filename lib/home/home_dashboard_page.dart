@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import '../profile/profile_page.dart';
-import '../calendar/calendar_screen.dart';
-import '../clock/clock_screen.dart';
-import '../../widgets/curved_navigation_bar.dart';
-import 'dashboard_view.dart';
 
+// Sections
+import 'dashboard/sections/header_section.dart';
+import 'dashboard/sections/progress_section.dart';
+import 'dashboard/sections/hunter_bento_section.dart';
+import 'dashboard/sections/quick_actions_section.dart';
+import 'dashboard/sections/daily_quest_section.dart';
+import 'dashboard/sections/side_quest_section.dart';
+import 'dashboard/modals/add_task_sheet.dart'; // Import Modal
+
+// Must be StatefulWidget to hold data
 class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({super.key});
 
@@ -13,51 +18,64 @@ class HomeDashboardPage extends StatefulWidget {
 }
 
 class _HomeDashboardPageState extends State<HomeDashboardPage> {
-  int _currentIndex = 0;
-  late PageController _pageController;
+  // 1. STATE: This list holds your tasks
+  List<Map<String, dynamic>> activeQuests = [
+    {'title': "Morning Run", 'subtitle': "5km • Fitness", 'xp': 150, 'isCompleted': true},
+    {'title': "Deep Work", 'subtitle': "2 Hours • Study", 'xp': 150, 'isCompleted': false},
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
+  // 2. LOGIC: Function to open modal and add result
+  void _openNewMissionSheet() async {
+    final newQuest = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddTaskSheet(),
+    );
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+    if (newQuest != null) {
+      setState(() {
+        activeQuests.add(newQuest);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color bgColor = Color(0xFF0B0B15);
+
     return Scaffold(
-      extendBody: true,
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: const [
-          DashboardView(),
-          Center(child: Text("Analytics Page")),
-          ProfilePage(),
-          ClockScreen(),
-          CalendarScreen(),
-        ],
-      ),
-      bottomNavigationBar: CurvedNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-            _pageController.jumpToPage(index);
-          });
-        },
-        items: const [
-          Icons.grid_view_rounded,
-          Icons.insights_rounded,
-          Icons.person_outline_rounded,
-          Icons.access_time_rounded,
-          Icons.calendar_today_rounded,
-        ],
+      backgroundColor: bgColor,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 10),
+              const HeaderSection(),
+              const SizedBox(height: 28),
+              const ProgressSection(),
+              const SizedBox(height: 24),
+              const HunterBentoSection(),
+              const SizedBox(height: 24),
+              const QuickActionsSection(),
+              const SizedBox(height: 32),
+
+              // 3. PASS DATA: Give the list to the section
+              DailyQuestSection(quests: activeQuests),
+
+              const SizedBox(height: 16),
+
+              // 4. PASS LOGIC: Give the function to the button
+              SideQuestSection(onTap: _openNewMissionSheet),
+
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
       ),
     );
   }

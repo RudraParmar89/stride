@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/theme_controller.dart';
+import '../../../controllers/theme_controller.dart';
 
 class DashboardHeader extends StatefulWidget {
   const DashboardHeader({super.key});
