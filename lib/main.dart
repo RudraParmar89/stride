@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'firebase_options.dart';
+
+// Services
+import 'services/notification_service.dart'; // <--- IMPORT THIS
 
 // Screens
 import 'splash/splash_screen.dart';
 import 'onboarding/onboarding_screen.dart';
+import 'onboarding/identity_protocol_screen.dart'; // <--- IMPORT THIS
 import 'auth/login_screen.dart';
 import 'ascension/ascension_screen.dart';
 
-// Navigation Shell (WITH CURVED NAVBAR)
+// Navigation Shell
 import 'navigation/app_shell.dart';
 
 // Controllers
-import 'controllers/theme_controller.dart';
 import 'controllers/xp_controller.dart';
 import 'controllers/task_controller.dart';
 import 'selection/mode_controller.dart';
 
 // Theme
-import 'theme/app_theme.dart'; // Ensure this file exists from the previous step
+import 'theme/app_theme.dart';
+import 'theme/theme_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,10 +34,18 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Initialize Database
+  await Hive.initFlutter();
+  await Hive.openBox('stepBox');
+  await Hive.openBox('settingsBox');
+
+  // Initialize Notifications (Astra)
+  await NotificationService.init(); // <--- CRITICAL: Start the "System"
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeController()),
+        ChangeNotifierProvider(create: (_) => ThemeManager()),
         ChangeNotifierProvider(create: (_) => XpController()),
         ChangeNotifierProvider(create: (_) => TaskController()),
         ChangeNotifierProvider(create: (_) => ModeController()),
@@ -47,29 +60,25 @@ class StrideApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to the controller for changes in ThemeMode (System/Light/Dark)
-    final themeController = context.watch<ThemeController>();
+    final themeManager = context.watch<ThemeManager>();
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Stride',
 
-      // THEMES (Now using AppTheme class)
-      themeMode: themeController.themeMode,
-      theme: AppTheme.lightTheme,   // Uses the Light colors defined in AppTheme
-      darkTheme: AppTheme.darkTheme, // Uses the Dark colors defined in AppTheme
+      // Theme Logic
+      themeMode: themeManager.isDark ? ThemeMode.dark : ThemeMode.light,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
 
       // ROUTING
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
+        '/identity': (context) => const IdentityProtocolScreen(), // <--- NEW ROUTE
         '/auth': (context) => const LoginScreen(),
-
-        // ⚠️ IMPORTANT:
-        // Home now goes to AppShell (NOT dashboard directly)
         '/home': (context) => const AppShell(),
-
         '/ascension': (context) => const AscensionScreen(),
       },
     );

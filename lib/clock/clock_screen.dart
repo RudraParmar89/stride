@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/percent_indicator.dart'; // Glitch-free ring
+import 'package:percent_indicator/percent_indicator.dart';
 import 'dart:async';
-import 'dart:ui'; // For FontFeature
+import 'dart:ui';
 
-// Import Notification Service
+// Import Theme
+import '../theme/theme_manager.dart';
+
+// Import Notification Service (Keep your existing file)
 import '../services/notification_service.dart';
 
 class ClockScreen extends StatefulWidget {
@@ -26,47 +29,57 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    const Color bgColor = Color(0xFF0B0B15);
-    const Color primary = Color(0xFF6C63FF);
+    // 1. LISTEN TO THEME
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, child) {
+        final theme = ThemeManager();
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          "TEMPORAL SYSTEM",
-          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-        ),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: primary,
-          labelColor: primary,
-          unselectedLabelColor: Colors.white60,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
-          tabs: const [
-            Tab(text: "FOCUS"),
-            Tab(text: "ALARM"),
-            Tab(text: "STOPWATCH"),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          FocusTimerTab(),
-          AlarmTab(),
-          StopwatchTab(),
-        ],
-      ),
+        return Scaffold(
+          backgroundColor: theme.bgColor, // <--- DYNAMIC BG
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: Text(
+              "TEMPORAL SYSTEM",
+              style: TextStyle(
+                  color: theme.subText, // <--- DYNAMIC SUBTEXT
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5
+              ),
+            ),
+            centerTitle: true,
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: theme.accentColor, // <--- DYNAMIC ACCENT
+              labelColor: theme.accentColor,
+              unselectedLabelColor: theme.subText,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
+              tabs: const [
+                Tab(text: "FOCUS"),
+                Tab(text: "ALARM"),
+                Tab(text: "STOPWATCH"),
+              ],
+            ),
+          ),
+          body: TabBarView(
+            controller: _tabController,
+            children: const [
+              FocusTimerTab(),
+              AlarmTab(),
+              StopwatchTab(),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
 // =========================================================
-// 1. FOCUS TIMER TAB (ENHANCED)
+// 1. FOCUS TIMER TAB (THEMED)
 // =========================================================
 class FocusTimerTab extends StatefulWidget {
   const FocusTimerTab({super.key});
@@ -77,10 +90,10 @@ class FocusTimerTab extends StatefulWidget {
 
 class _FocusTimerTabState extends State<FocusTimerTab> {
   Timer? _timer;
-  int _initialSeconds = 1500; // 25 min default
+  int _initialSeconds = 1500;
   int _remainingSeconds = 1500;
   bool _isRunning = false;
-  String _selectedTag = "Deep Work"; // Task Linking
+  String _selectedTag = "Deep Work";
 
   @override
   void dispose() {
@@ -95,7 +108,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
         setState(() => _remainingSeconds--);
       } else {
         _stopTimer();
-        _showCompletionDialog(); // XP Reward
+        _showCompletionDialog();
       }
     });
   }
@@ -110,25 +123,36 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
     setState(() => _remainingSeconds = _initialSeconds);
   }
 
-  // XP Reward System
+  // XP Reward System (Themed)
   void _showCompletionDialog() {
+    final theme = ThemeManager(); // Access singleton directly for dialogs
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2C),
+        backgroundColor: theme.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Center(child: Text("MISSION COMPLETE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1.5))),
+        title: Center(
+            child: Text(
+                "MISSION COMPLETE",
+                style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1.5)
+            )
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: const Color(0xFF00D2D3).withOpacity(0.1), shape: BoxShape.circle),
-              child: const Icon(Icons.verified_rounded, color: Color(0xFF00D2D3), size: 48),
+              decoration: BoxDecoration(color: theme.accentColor.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(Icons.verified_rounded, color: theme.accentColor, size: 48),
             ),
             const SizedBox(height: 24),
-            Text("You maintained focus on '$_selectedTag'.", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+            Text(
+                "You maintained focus on '$_selectedTag'.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: theme.subText)
+            ),
             const SizedBox(height: 12),
             const Text("+150 XP", style: TextStyle(color: Color(0xFFFFD700), fontSize: 32, fontWeight: FontWeight.w900)),
           ],
@@ -139,7 +163,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
             child: ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
+                backgroundColor: theme.accentColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text("CLAIM REWARD", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -152,29 +176,34 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 
   void _editDuration() async {
     _stopTimer();
+    final theme = ThemeManager();
+
     int? selectedMinutes = await showDialog<int>(
       context: context,
       builder: (context) {
         int tempMin = _initialSeconds ~/ 60;
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Set Focus Duration", style: TextStyle(color: Colors.white)),
+          backgroundColor: theme.cardColor,
+          title: Text("Set Focus Duration", style: TextStyle(color: theme.textColor)),
           content: TextField(
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(color: theme.textColor, fontSize: 24, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               suffixText: "min",
-              suffixStyle: TextStyle(color: Colors.white54, fontSize: 16),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF00D2D3))),
+              suffixStyle: TextStyle(color: theme.subText, fontSize: 16),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: theme.subText)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: theme.accentColor)),
             ),
             onChanged: (val) => tempMin = int.tryParse(val) ?? 25,
           ),
           actions: [
-            TextButton(child: const Text("CANCEL"), onPressed: () => Navigator.pop(context)),
             TextButton(
-              child: const Text("CONFIRM", style: TextStyle(color: Color(0xFF00D2D3), fontWeight: FontWeight.bold)),
+                child: Text("CANCEL", style: TextStyle(color: theme.subText)),
+                onPressed: () => Navigator.pop(context)
+            ),
+            TextButton(
+              child: Text("CONFIRM", style: TextStyle(color: theme.accentColor, fontWeight: FontWeight.bold)),
               onPressed: () => Navigator.pop(context, tempMin),
             ),
           ],
@@ -198,123 +227,130 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 
   @override
   Widget build(BuildContext context) {
-    double percent = _remainingSeconds / (_initialSeconds == 0 ? 1 : _initialSeconds);
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, child) {
+        final theme = ThemeManager();
+        double percent = _remainingSeconds / (_initialSeconds == 0 ? 1 : _initialSeconds);
 
-    // Focus Mode Background (Subtle shift when active)
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
-      color: _isRunning ? const Color(0xFF05050A) : Colors.transparent, // Darker when running
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-
-          // Task Linking Dropdown
-          Container(
-            margin: const EdgeInsets.only(bottom: 40),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedTag,
-                dropdownColor: const Color(0xFF1E1E2C),
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                items: ["General Focus", "Deep Work", "Training", "Reading", "Meditation"]
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: _isRunning ? null : (val) => setState(() => _selectedTag = val!),
-              ),
-            ),
-          ),
-
-          // Glitch-Free CircularPercentIndicator
-          CircularPercentIndicator(
-            radius: 130.0,
-            lineWidth: 15.0,
-            percent: percent,
-            animation: true,
-            animateFromLastPercent: true,
-            circularStrokeCap: CircularStrokeCap.round,
-            backgroundColor: Colors.white.withOpacity(0.05),
-            linearGradient: const LinearGradient(
-              colors: [Color(0xFF00D2D3), Color(0xFF6C63FF)], // Cyan to Purple Gradient
-            ),
-            center: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _formatTime(_remainingSeconds),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 56,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      fontFeatures: [FontFeature.tabularFigures()]
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isRunning ? "SYSTEM ACTIVE" : "SYSTEM PAUSED",
-                  style: TextStyle(
-                      color: _isRunning ? const Color(0xFF00D2D3) : Colors.white54,
-                      fontSize: 12,
-                      letterSpacing: 3,
-                      fontWeight: FontWeight.w600
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 50),
-
-          // Controls
-          Row(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          // Subtle tint when running, clean when not
+          color: _isRunning ? theme.accentColor.withOpacity(0.05) : Colors.transparent,
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildButton(Icons.refresh, Colors.white24, _resetTimer),
-              const SizedBox(width: 24),
-              _buildButton(
-                  _isRunning ? Icons.pause : Icons.play_arrow_rounded,
-                  const Color(0xFF00D2D3),
-                  _isRunning ? _stopTimer : _startTimer,
-                  isBig: true,
-                  isGlowing: _isRunning
+
+              // Task Linking Dropdown
+              Container(
+                margin: const EdgeInsets.only(bottom: 40),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: theme.textColor.withOpacity(0.1)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedTag,
+                    dropdownColor: theme.cardColor,
+                    icon: Icon(Icons.arrow_drop_down, color: theme.subText),
+                    style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                    items: ["General Focus", "Deep Work", "Training", "Reading", "Meditation"]
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                    onChanged: _isRunning ? null : (val) => setState(() => _selectedTag = val!),
+                  ),
+                ),
               ),
-              const SizedBox(width: 24),
-              _buildButton(Icons.edit_outlined, Colors.white24, _editDuration),
+
+              // Circular Progress
+              CircularPercentIndicator(
+                radius: 130.0,
+                lineWidth: 15.0,
+                percent: percent,
+                animation: true,
+                animateFromLastPercent: true,
+                circularStrokeCap: CircularStrokeCap.round,
+                backgroundColor: theme.textColor.withOpacity(0.05),
+                linearGradient: LinearGradient(
+                  colors: [theme.accentColor, theme.accentColor.withOpacity(0.6)],
+                ),
+                center: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _formatTime(_remainingSeconds),
+                      style: TextStyle(
+                          color: theme.textColor,
+                          fontSize: 56,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                          fontFeatures: const [FontFeature.tabularFigures()]
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isRunning ? "SYSTEM ACTIVE" : "SYSTEM PAUSED",
+                      style: TextStyle(
+                          color: _isRunning ? theme.accentColor : theme.subText,
+                          fontSize: 12,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 50),
+
+              // Controls
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildButton(theme, Icons.refresh, theme.subText, _resetTimer),
+                  const SizedBox(width: 24),
+                  _buildButton(
+                      theme,
+                      _isRunning ? Icons.pause : Icons.play_arrow_rounded,
+                      theme.accentColor,
+                      _isRunning ? _stopTimer : _startTimer,
+                      isBig: true,
+                      isGlowing: _isRunning
+                  ),
+                  const SizedBox(width: 24),
+                  _buildButton(theme, Icons.edit_outlined, theme.subText, _editDuration),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildButton(IconData icon, Color color, VoidCallback onTap, {bool isBig = false, bool isGlowing = false}) {
+  Widget _buildButton(ThemeManager theme, IconData icon, Color color, VoidCallback onTap, {bool isBig = false, bool isGlowing = false}) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: EdgeInsets.all(isBig ? 24 : 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(isBig ? 0.2 : 0.1),
+          color: isBig ? theme.cardColor : theme.cardColor.withOpacity(0.5),
           shape: BoxShape.circle,
           border: isBig ? Border.all(color: color, width: 2) : null,
           boxShadow: isGlowing
-              ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 20, spreadRadius: 2)]
-              : [],
+              ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 20, spreadRadius: 2)]
+              : theme.isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
         ),
-        child: Icon(icon, color: isBig ? color : Colors.white, size: isBig ? 32 : 24),
+        child: Icon(icon, color: color, size: isBig ? 32 : 24),
       ),
     );
   }
 }
 
 // =========================================================
-// 2. ALARM TAB (FUNCTIONAL & FIXED FAB)
+// 2. ALARM TAB (THEMED)
 // =========================================================
 class AlarmTab extends StatefulWidget {
   const AlarmTab({super.key});
@@ -339,13 +375,19 @@ class _AlarmTabState extends State<AlarmTab> {
   }
 
   void _addAlarm() async {
+    final theme = ThemeManager();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
+        // Theme the TimePicker
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(primary: Color(0xFF6C63FF), onPrimary: Colors.white, surface: Color(0xFF1E1E2C), onSurface: Colors.white),
+          data: theme.isDark
+              ? ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(primary: theme.accentColor, onPrimary: Colors.white, surface: theme.cardColor, onSurface: Colors.white),
+          )
+              : ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(primary: theme.accentColor, onPrimary: Colors.white, surface: Colors.white, onSurface: Colors.black),
           ),
           child: child!,
         );
@@ -363,61 +405,72 @@ class _AlarmTabState extends State<AlarmTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, child) {
+        final theme = ThemeManager();
 
-      // FIX: Added Padding to lift FAB above Bottom Navigation Bar
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
-          onPressed: _addAlarm,
-          backgroundColor: const Color(0xFF6C63FF),
-          child: const Icon(Icons.add_alarm, color: Colors.white),
-        ),
-      ),
-
-      body: alarms.isEmpty
-          ? Center(child: Text("NO ALARMS SET", style: TextStyle(color: Colors.white.withOpacity(0.2), letterSpacing: 2, fontWeight: FontWeight.bold)))
-          : ListView.separated(
-        padding: const EdgeInsets.all(24),
-        itemCount: alarms.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final alarm = alarms[index];
-          final time = alarm['time'] as TimeOfDay;
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2C),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: alarm['isActive'] ? const Color(0xFF6C63FF).withOpacity(0.5) : Colors.white10),
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.only(bottom: 80.0),
+            child: FloatingActionButton(
+              onPressed: _addAlarm,
+              backgroundColor: theme.accentColor,
+              child: const Icon(Icons.add_alarm, color: Colors.white),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          body: alarms.isEmpty
+              ? Center(child: Text("NO ALARMS SET", style: TextStyle(color: theme.subText, letterSpacing: 2, fontWeight: FontWeight.bold)))
+              : ListView.separated(
+            padding: const EdgeInsets.all(24),
+            itemCount: alarms.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final alarm = alarms[index];
+              final time = alarm['time'] as TimeOfDay;
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: alarm['isActive'] ? theme.accentColor.withOpacity(0.5) : theme.textColor.withOpacity(0.05)),
+                  boxShadow: theme.isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("${time.hour.toString().padLeft(2,'0')}:${time.minute.toString().padLeft(2,'0')}", style: TextStyle(color: alarm['isActive'] ? Colors.white : Colors.white54, fontSize: 32, fontWeight: FontWeight.bold)),
-                    Text(alarm['label'], style: TextStyle(color: alarm['isActive'] ? const Color(0xFF6C63FF) : Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                            "${time.hour.toString().padLeft(2,'0')}:${time.minute.toString().padLeft(2,'0')}",
+                            style: TextStyle(color: alarm['isActive'] ? theme.textColor : theme.subText, fontSize: 32, fontWeight: FontWeight.bold)
+                        ),
+                        Text(
+                            alarm['label'],
+                            style: TextStyle(color: alarm['isActive'] ? theme.accentColor : theme.subText, fontSize: 12, fontWeight: FontWeight.bold)
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: alarm['isActive'],
+                      activeColor: theme.accentColor,
+                      onChanged: (val) => _toggleAlarm(index, val),
+                    ),
                   ],
                 ),
-                Switch(
-                  value: alarm['isActive'],
-                  activeColor: const Color(0xFF6C63FF),
-                  onChanged: (val) => _toggleAlarm(index, val),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
 
 // =========================================================
-// 3. STOPWATCH TAB (FUNCTIONAL)
+// 3. STOPWATCH TAB (THEMED)
 // =========================================================
 class StopwatchTab extends StatefulWidget {
   const StopwatchTab({super.key});
@@ -475,41 +528,55 @@ class _StopwatchTabState extends State<StopwatchTab> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isRunning = _stopwatch.isRunning;
-    const Color accentOrange = Color(0xFFFF9F43);
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, child) {
+        final theme = ThemeManager();
+        final bool isRunning = _stopwatch.isRunning;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          _formatStopwatchTime(_stopwatch.elapsedMilliseconds),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 64,
-            fontWeight: FontWeight.bold,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
-        const SizedBox(height: 80),
-        Row(
+        return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTap: _resetStopwatch,
-              child: Container(width: 60, height: 60, decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle), child: const Icon(Icons.stop, color: Colors.white)),
-            ),
-            const SizedBox(width: 40),
-            GestureDetector(
-              onTap: isRunning ? _stopStopwatch : _startStopwatch,
-              child: Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(color: accentOrange.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: accentOrange, width: 2), boxShadow: [BoxShadow(color: accentOrange.withOpacity(0.4), blurRadius: 20)]),
-                child: Icon(isRunning ? Icons.pause : Icons.play_arrow, color: accentOrange, size: 40),
+            Text(
+              _formatStopwatchTime(_stopwatch.elapsedMilliseconds),
+              style: TextStyle(
+                color: theme.textColor, // <--- DYNAMIC COLOR
+                fontSize: 64,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
+            const SizedBox(height: 80),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: _resetStopwatch,
+                  child: Container(
+                      width: 60, height: 60,
+                      decoration: BoxDecoration(color: theme.textColor.withOpacity(0.1), shape: BoxShape.circle),
+                      child: Icon(Icons.stop, color: theme.textColor)
+                  ),
+                ),
+                const SizedBox(width: 40),
+                GestureDetector(
+                  onTap: isRunning ? _stopStopwatch : _startStopwatch,
+                  child: Container(
+                    width: 80, height: 80,
+                    decoration: BoxDecoration(
+                        color: theme.accentColor.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: theme.accentColor, width: 2),
+                        boxShadow: [BoxShadow(color: theme.accentColor.withOpacity(0.4), blurRadius: 20)]
+                    ),
+                    child: Icon(isRunning ? Icons.pause : Icons.play_arrow, color: theme.accentColor, size: 40),
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

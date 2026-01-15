@@ -11,6 +11,7 @@ class NotificationService {
   static Future<void> init() async {
     tz.initializeTimeZones();
 
+    // 1. Setup Timezone
     String timeZoneName;
     try {
       final dynamic result = await FlutterTimezone.getLocalTimezone();
@@ -25,6 +26,7 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
+    // 2. Setup Icons
     const AndroidInitializationSettings androidSettings =
     AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -44,7 +46,46 @@ class NotificationService {
   }
 
   // =========================================================
-  // 1. PROJECT DEADLINES (One-time)
+  // 1. MASCOT MESSAGE (DUOLINGO STYLE)
+  // =========================================================
+  static Future<void> showMascotNotification({
+    required String title,
+    required String body,
+  }) async {
+    final int id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    await _notificationsPlugin.show(
+      id,
+      title, // e.g. "Astra here..."
+      body,  // e.g. "The shadows are gathering..."
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'mascot_channel',
+          'Astra Messages',
+          channelDescription: 'Motivational messages from your companion',
+          importance: Importance.max,
+          priority: Priority.high,
+
+          // --- THE MAGIC SAUCE ---
+          // This renders the image on the right/left side like a chat head
+          largeIcon: DrawableResourceAndroidBitmap('astra_head'),
+
+          // Tint color for the small icon/app name (Use your Purple)
+          color: Color(0xFF6C63FF),
+
+          // Allows for longer text to be fully readable
+          styleInformation: BigTextStyleInformation(''),
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
+
+  // =========================================================
+  // 2. PROJECT DEADLINES (One-time)
   // =========================================================
   static Future<void> scheduleDeadlineNotification({
     required int id,
@@ -84,7 +125,7 @@ class NotificationService {
   }
 
   // =========================================================
-  // 2. DAILY ALARMS (Recurring)
+  // 3. DAILY ALARMS (Recurring)
   // =========================================================
   static Future<void> scheduleAlarm({
     required int id,
@@ -100,7 +141,7 @@ class NotificationService {
       time.minute,
     );
 
-    // If the time has already passed today, schedule it for tomorrow
+    // If time passed, schedule for tomorrow
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
@@ -118,7 +159,7 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           color: Color(0xFF6C63FF),
-          fullScreenIntent: true, // Shows over lock screen on Android
+          fullScreenIntent: true,
         ),
         iOS: DarwinNotificationDetails(),
       ),
@@ -130,7 +171,7 @@ class NotificationService {
   }
 
   // =========================================================
-  // 3. CANCEL NOTIFICATION
+  // 4. CANCEL NOTIFICATION
   // =========================================================
   static Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id);

@@ -1,74 +1,76 @@
 import 'package:flutter/material.dart';
+import '../../../../theme/theme_manager.dart';
+import 'quest_tile.dart'; // Import the file you made above, or keep it in same file
 
 class DailyQuestSection extends StatelessWidget {
-  // Accept the list of quests dynamically
   final List<Map<String, dynamic>> quests;
+  final Function(int index) onQuestToggle; // <--- NEW CALLBACK
 
-  const DailyQuestSection({super.key, required this.quests});
+  const DailyQuestSection({
+    super.key,
+    required this.quests,
+    required this.onQuestToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, child) {
+        final theme = ThemeManager();
+
+        return Column(
           children: [
-            const Text("ACTIVE QUESTS", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text("See All", style: TextStyle(color: const Color(0xFF6C63FF).withOpacity(0.8), fontSize: 14, fontWeight: FontWeight.w600)),
+            // HEADER
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "ACTIVE PROTOCOLS",
+                    style: TextStyle(
+                        color: theme.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    child: Text(
+                      "See All",
+                      style: TextStyle(
+                          color: theme.accentColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ANIMATED LIST
+            ListView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: quests.length,
+              itemBuilder: (context, index) {
+                // Pass the index for staggered delay calculation
+                return QuestTile(
+                  quest: quests[index],
+                  index: index,
+                  onTap: () => onQuestToggle(index), // Pass interaction back up
+                );
+              },
+            ),
           ],
-        ),
-        const SizedBox(height: 16),
-
-        // BUILD LIST DYNAMICALLY
-        ...quests.map((quest) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildTaskTile(
-                quest['title'],
-                quest['subtitle'],
-                quest['isCompleted'],
-                quest['xp']
-            ),
-          );
-        }).toList(),
-      ],
-    );
-  }
-
-  Widget _buildTaskTile(String title, String subtitle, bool isCompleted, int xp) {
-    // Determine Color based on subtitle content (Simple logic)
-    Color accent = const Color(0xFF54A0FF); // Default Blue
-    if (subtitle.contains("Fitness") || subtitle.contains("Strength")) accent = const Color(0xFFFF9F43);
-    if (subtitle.contains("Study") || subtitle.contains("Intellect")) accent = const Color(0xFF00BFA6);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2C),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isCompleted ? accent.withOpacity(0.5) : Colors.white.withOpacity(0.05), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: accent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(isCompleted ? Icons.check : Icons.circle_outlined, color: accent, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, decoration: isCompleted ? TextDecoration.lineThrough : null, decorationColor: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
-              ],
-            ),
-          ),
-          Text("+$xp XP", style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 14)),
-        ],
-      ),
+        );
+      },
     );
   }
 }

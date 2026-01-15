@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lottie/lottie.dart';
 
-import 'package:stride/common/app_loader.dart';
-import 'package:stride/auth/auth_service.dart';
-import 'package:stride/auth/signup_screen.dart';
-import 'package:stride/selection/selection_screen.dart';
+import '../common/app_loader.dart';
+import 'auth_service.dart';
+import 'signup_screen.dart';
+
+// 1. REMOVED SelectionScreen
+// 2. We use Named Routes now, so we don't strictly need to import IdentityScreen here
+// if your main.dart is set up correctly.
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,12 +41,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SelectionScreen(), // ❌ NO const
-          ),
-              (route) => false,
+        // 3. THE SPECTRE MOVE: Go to Identity Protocol
+        // We use pushNamedAndRemoveUntil to wipe the back button history.
+        // They cannot go back to Login once inside.
+        Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/identity',
+                (route) => false
         );
       }
     } catch (e) {
@@ -194,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              /// 🌐 SOCIAL LOGIN — FIXED
+              /// 🌐 SOCIAL LOGIN
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -233,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => SignupScreen(), // ❌ NO const
+                          builder: (_) => const SignupScreen(),
                         ),
                       );
                     },
@@ -286,6 +290,7 @@ class _SocialIcon extends StatelessWidget {
   final double gap;
 
   const _SocialIcon({
+    super.key,
     required this.asset,
     required this.onTap,
     this.gap = 0,
