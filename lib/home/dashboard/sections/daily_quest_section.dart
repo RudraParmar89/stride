@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../../theme/theme_manager.dart';
-import 'quest_tile.dart'; // Import the file you made above, or keep it in same file
+import '../../../../controllers/task_controller.dart';
+import 'quest_tile.dart';
 
 class DailyQuestSection extends StatelessWidget {
-  final List<Map<String, dynamic>> quests;
-  final Function(int index) onQuestToggle; // <--- NEW CALLBACK
+  final List<Task> quests;
+  final Function(String id) onQuestToggle;
+  final Function(String id) onQuestDelete;
 
   const DailyQuestSection({
     super.key,
     required this.quests,
     required this.onQuestToggle,
+    required this.onQuestDelete,
   });
 
   @override
@@ -21,7 +24,6 @@ class DailyQuestSection extends StatelessWidget {
 
         return Column(
           children: [
-            // HEADER
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: Row(
@@ -36,16 +38,12 @@ class DailyQuestSection extends StatelessWidget {
                         letterSpacing: 0.5
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: Text(
-                      "See All",
-                      style: TextStyle(
-                          color: theme.accentColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600
-                      ),
+                  Text(
+                    "${quests.where((t) => !t.isCompleted).length} PENDING",
+                    style: TextStyle(
+                        color: theme.subText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold
                     ),
                   ),
                 ],
@@ -53,18 +51,48 @@ class DailyQuestSection extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // ANIMATED LIST
-            ListView.builder(
+            quests.isEmpty
+                ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40.0),
+              child: Column(
+                children: [
+                  Icon(Icons.radar_rounded, size: 48, color: theme.subText.withOpacity(0.3)),
+                  const SizedBox(height: 12),
+                  Text(
+                    "NO ACTIVE DIRECTIVES",
+                    style: TextStyle(color: theme.subText, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                  ),
+                ],
+              ),
+            )
+                : ListView.builder(
               padding: EdgeInsets.zero,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: quests.length,
               itemBuilder: (context, index) {
-                // Pass the index for staggered delay calculation
-                return QuestTile(
-                  quest: quests[index],
-                  index: index,
-                  onTap: () => onQuestToggle(index), // Pass interaction back up
+                final task = quests[index];
+
+                return Dismissible(
+                  key: Key(task.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(20)
+                    ),
+                    child: const Icon(Icons.delete_outline, color: Colors.white),
+                  ),
+                  onDismissed: (direction) => onQuestDelete(task.id),
+                  child: QuestTile(
+                    task: task, // <--- FIXED: Passing the Task object directly
+                    index: index,
+                    onTap: () => onQuestToggle(task.id),
+                    onDelete: () => onQuestDelete(task.id),
+                  ),
                 );
               },
             ),

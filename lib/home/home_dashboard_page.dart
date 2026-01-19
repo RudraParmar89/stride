@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/theme_manager.dart';
 import '../../services/step_tracker_service.dart';
+import '../../controllers/task_controller.dart';
+import '../../controllers/xp_controller.dart';
 
 // Sections
 import 'dashboard/sections/header_section.dart';
@@ -19,14 +22,8 @@ class HomeDashboardPage extends StatefulWidget {
 }
 
 class _HomeDashboardPageState extends State<HomeDashboardPage> {
-  // 1. STATE VARIABLES
   int _currentSteps = 0;
   final StepTrackerService _stepService = StepTrackerService();
-
-  List<Map<String, dynamic>> activeQuests = [
-    {'title': "Morning Run", 'subtitle': "5km • Fitness", 'xp': 150, 'isCompleted': true},
-    {'title': "Deep Work", 'subtitle': "2 Hours • Study", 'xp': 150, 'isCompleted': false},
-  ];
 
   @override
   void initState() {
@@ -34,52 +31,32 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     _initSteps();
   }
 
-  // 2. INIT STEPS
   void _initSteps() {
     _stepService.initService();
-    setState(() {
-      _currentSteps = _stepService.getSavedSteps();
-    });
+    if (mounted) setState(() => _currentSteps = _stepService.getSavedSteps());
     _stepService.stepStream.listen((steps) {
-      if (mounted) {
-        setState(() {
-          _currentSteps = steps;
-        });
-      }
+      if (mounted) setState(() => _currentSteps = steps);
     });
   }
 
-  // 3. LOGIC: ADD NEW QUEST
-  void _openNewMissionSheet() async {
-    final newQuest = await showModalBottomSheet<Map<String, dynamic>>(
+  void _openNewMissionSheet(BuildContext context, TaskController controller) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const AddTaskSheet(),
     );
 
-    if (newQuest != null) {
-      setState(() {
-        activeQuests.add(newQuest);
-      });
+    if (result != null && result['title'] != null) {
+      controller.addTask(result['title']);
     }
-  }
-
-  // 4. LOGIC: TOGGLE QUEST COMPLETION (Interactive Update)
-  void _toggleQuest(int index) {
-    setState(() {
-      // Toggle the status
-      activeQuests[index]['isCompleted'] = !activeQuests[index]['isCompleted'];
-
-      // (Optional) Here you would also add XP to your controller
-      if (activeQuests[index]['isCompleted']) {
-        print("QUEST COMPLETE: +${activeQuests[index]['xp']} XP");
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final taskController = context.watch<TaskController>();
+    final xpController = context.watch<XpController>();
+
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
@@ -101,21 +78,29 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   const ProgressSection(),
                   const SizedBox(height: 24),
 
-                  // LIVE STEPS
-                  HunterBentoSection(steps: _currentSteps),
+                  HunterBentoSection(
+                    steps: _currentSteps,
+                    completedTasks: taskController.tasks.where((t) => t.isCompleted).length,
+                    totalTasks: taskController.tasks.length,
+                  ),
 
                   const SizedBox(height: 24),
                   const QuickActionsSection(),
                   const SizedBox(height: 32),
 
-                  // 5. CONNECTED QUEST SECTION
+                  // FIX: Added onQuestDelete
                   DailyQuestSection(
-                    quests: activeQuests,
-                    onQuestToggle: _toggleQuest, // <--- Passes the logic down
+                    quests: taskController.tasks,
+                    onQuestToggle: (id) {
+                      taskController.toggleTask(id);
+                      final task = taskController.tasks.firstWhere((t) => t.id == id);
+                      if (task.isCompleted) xpController.addXp(50);
+                    },
+                    onQuestDelete: (id) => taskController.deleteTask(id), // <--- ADDED THIS
                   ),
 
                   const SizedBox(height: 16),
-                  SideQuestSection(onTap: _openNewMissionSheet),
+                  SideQuestSection(onTap: () => _openNewMissionSheet(context, taskController)),
                   const SizedBox(height: 100),
                 ],
               ),

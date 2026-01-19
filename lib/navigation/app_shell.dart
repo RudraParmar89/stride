@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
-import '../theme/theme_manager.dart'; // <--- IMPORT THEME MANAGER
+import 'package:provider/provider.dart';
 
-// Screens
+import '../theme/theme_manager.dart';
 import '../home/home_dashboard_page.dart';
-import '../calendar/calendar_screen.dart';
 import '../clock/clock_screen.dart';
+import '../calendar/calendar_screen.dart';
 import '../profile/profile_screen.dart';
+import '../home/analytics/analytics_page.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -19,100 +20,74 @@ class _AppShellState extends State<AppShell> {
   final PageController _pageController = PageController(initialPage: 0);
   final NotchBottomBarController _controller = NotchBottomBarController(index: 0);
 
-  final List<Widget> _screens = [
+  final List<Widget> _pages = [
     const HomeDashboardPage(),
-    const CalendarScreen(),
     const ClockScreen(),
-    const Center(child: Text("Stats Screen")), // Placeholder
+    const CalendarScreen(),
+    const AnalyticsPage(),
     const ProfileScreen(),
   ];
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  // --- FIX FOR ACTIVE ICON ONLY ---
-  Widget _fixActiveIcon(IconData icon) {
-    return Transform.translate(
-      offset: const Offset(-1.5, -1.5),
-      child: Icon(icon, color: Colors.white, size: 26),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // 1. LISTEN TO THEME
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    final theme = context.watch<ThemeManager>();
 
-        return Scaffold(
-          backgroundColor: theme.bgColor, // <--- DYNAMIC APP BACKGROUND
-          extendBody: true,
-          body: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: _screens,
+    return Scaffold(
+      backgroundColor: theme.bgColor,
+      // extendBody: true allows content to go behind the notch if needed,
+      // but for a solid bar, the package handles the layout.
+      extendBody: true,
+
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _pages,
+      ),
+
+      bottomNavigationBar: AnimatedNotchBottomBar(
+        notchBottomBarController: _controller,
+        color: theme.cardColor,
+        notchColor: theme.accentColor,
+        showLabel: false,
+
+        // --- DOCKING THE BAR (No Floating) ---
+        kBottomRadius: 0.0,  // Square corners at the bottom
+        removeMargins: true, // Removes side and bottom spacing -> Full Width
+
+        kIconSize: 24.0,
+
+        // Shadow only in light mode for separation
+        shadowElevation: theme.isDark ? 0 : 10,
+
+        bottomBarItems: [
+          BottomBarItem(
+            inActiveItem: Icon(Icons.dashboard_outlined, color: theme.subText),
+            activeItem: const Icon(Icons.dashboard_rounded, color: Colors.white),
+            itemLabel: 'Home',
           ),
-          bottomNavigationBar: AnimatedNotchBottomBar(
-            notchBottomBarController: _controller,
-            color: theme.cardColor,        // <--- BAR COLOR (White/Dark Grey)
-            notchColor: theme.accentColor, // <--- ACTIVE CIRCLE COLOR (Red/Blue/Green)
-            showLabel: false,
-            shadowElevation: theme.isDark ? 0 : 5, // Add shadow in light mode for visibility
-
-            kBottomRadius: 0.0,
-            kIconSize: 24.0,
-            removeMargins: true,
-            circleMargin: 3.0,
-            durationInMilliSeconds: 250,
-
-            bottomBarItems: [
-              // 1. HOME
-              BottomBarItem(
-                inActiveItem: Icon(Icons.dashboard_outlined, color: theme.subText, size: 24), // <--- DYNAMIC GREY
-                activeItem: _fixActiveIcon(Icons.dashboard_rounded),
-                itemLabel: 'Home',
-              ),
-
-              // 2. CALENDAR
-              BottomBarItem(
-                inActiveItem: Icon(Icons.calendar_month_outlined, color: theme.subText, size: 24),
-                activeItem: _fixActiveIcon(Icons.calendar_today_rounded),
-                itemLabel: 'Calendar',
-              ),
-
-              // 3. CLOCK
-              BottomBarItem(
-                inActiveItem: Icon(Icons.timer_outlined, color: theme.subText, size: 24),
-                activeItem: _fixActiveIcon(Icons.timer_rounded),
-                itemLabel: 'Clock',
-              ),
-
-              // 4. STATS
-              BottomBarItem(
-                inActiveItem: Icon(Icons.bar_chart_rounded, color: theme.subText, size: 24),
-                activeItem: _fixActiveIcon(Icons.bar_chart_rounded),
-                itemLabel: 'Stats',
-              ),
-
-              // 5. PROFILE
-              BottomBarItem(
-                inActiveItem: Icon(Icons.person_outline_rounded, color: theme.subText, size: 24),
-                activeItem: _fixActiveIcon(Icons.person_rounded),
-                itemLabel: 'Profile',
-              ),
-            ],
-            onTap: (index) {
-              _pageController.jumpToPage(index);
-              _controller.index = index;
-            },
+          BottomBarItem(
+            inActiveItem: Icon(Icons.timer_outlined, color: theme.subText),
+            activeItem: const Icon(Icons.timer_rounded, color: Colors.white),
+            itemLabel: 'Focus',
           ),
-        );
-      },
+          BottomBarItem(
+            inActiveItem: Icon(Icons.calendar_month_outlined, color: theme.subText),
+            activeItem: const Icon(Icons.calendar_today_rounded, color: Colors.white),
+            itemLabel: 'Calendar',
+          ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.bar_chart_rounded, color: theme.subText),
+            activeItem: const Icon(Icons.bar_chart_rounded, color: Colors.white),
+            itemLabel: 'Stats',
+          ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.person_outline_rounded, color: theme.subText),
+            activeItem: const Icon(Icons.person_rounded, color: Colors.white),
+            itemLabel: 'Profile',
+          ),
+        ],
+        onTap: (index) => _pageController.jumpToPage(index),
+      ),
     );
   }
 }

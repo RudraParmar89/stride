@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AscensionScreen extends StatefulWidget {
-  const AscensionScreen({super.key});
+  final VoidCallback? onComplete;
+
+  const AscensionScreen({super.key, this.onComplete});
 
   @override
   State<AscensionScreen> createState() => _AscensionScreenState();
@@ -62,8 +64,12 @@ class _AscensionScreenState extends State<AscensionScreen>
 
     HapticFeedback.lightImpact();
 
-    // ✅ Navigate using OWN context (this fixes everything)
-    Navigator.of(context).pushReplacementNamed('/home');
+    // ✅ Call onComplete if provided, else navigate directly
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   @override

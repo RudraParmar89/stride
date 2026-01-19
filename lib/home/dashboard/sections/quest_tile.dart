@@ -1,17 +1,19 @@
-// Place this in the same file or a new file: lib/home/dashboard/widgets/quest_tile.dart
 import 'package:flutter/material.dart';
 import '../../../../theme/theme_manager.dart';
+import '../../../../controllers/task_controller.dart'; // <--- Import Task Model
 
 class QuestTile extends StatefulWidget {
-  final Map<String, dynamic> quest;
+  final Task task; // <--- CHANGED: Uses real Task object instead of Map
+  final int index;
   final VoidCallback onTap;
-  final int index; // For staggered animation delay
+  final VoidCallback? onDelete; // Optional delete callback
 
   const QuestTile({
     super.key,
-    required this.quest,
-    required this.onTap,
+    required this.task,
     required this.index,
+    required this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -20,7 +22,6 @@ class QuestTile extends StatefulWidget {
 
 class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -35,12 +36,30 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
   }
 
   void _handleTap() async {
-    // 1. Shrink Effect (Press Down)
     await _scaleController.reverse();
-    // 2. Expand Effect (Bounce Back)
     await _scaleController.forward();
-    // 3. Trigger Logic
     widget.onTap();
+  }
+
+  // --- NEW: COLOR LOGIC ---
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'strength':
+      case 'fitness':
+        return const Color(0xFFFF5252); // Red
+      case 'intellect':
+      case 'study':
+      case 'coding':
+        return const Color(0xFF6C63FF); // Purple
+      case 'vitality':
+      case 'health':
+        return const Color(0xFF00D2D3); // Cyan
+      case 'spirit':
+      case 'meditation':
+        return const Color(0xFFFFD700); // Gold
+      default:
+        return const Color(0xFF54A0FF); // Blue (Default)
+    }
   }
 
   @override
@@ -51,31 +70,24 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    bool isCompleted = widget.quest['isCompleted'];
-    String subtitle = widget.quest['subtitle'];
-
-    // Determine Accent Color
-    Color accent = const Color(0xFF54A0FF);
-    if (subtitle.contains("Fitness")) accent = const Color(0xFFFF9F43);
-    if (subtitle.contains("Study")) accent = const Color(0xFF00BFA6);
+    // 1. Get Dynamic Color
+    final accent = _getCategoryColor(widget.task.category);
 
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, _) {
         final theme = ThemeManager();
+        final bool isCompleted = widget.task.isCompleted;
 
-        // STAGGERED ENTRANCE ANIMATION
+        // ANIMATION WRAPPER
         return TweenAnimationBuilder<double>(
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOutQuart,
           tween: Tween<double>(begin: 0, end: 1),
           builder: (context, value, child) {
             return Transform.translate(
-              offset: Offset(0, 50 * (1 - value)), // Slide Up
-              child: Opacity(
-                opacity: value,
-                child: child,
-              ),
+              offset: Offset(0, 50 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
             );
           },
           child: GestureDetector(
@@ -88,15 +100,12 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  // Dynamic Background: Slightly lighter/colored when active
-                  color: isCompleted
-                      ? accent.withOpacity(0.15)
-                      : theme.cardColor,
+                  // Dynamic Background
+                  color: isCompleted ? accent.withOpacity(0.15) : theme.cardColor,
                   borderRadius: BorderRadius.circular(20),
+                  // Dynamic Border
                   border: Border.all(
-                    color: isCompleted
-                        ? accent.withOpacity(0.6)
-                        : theme.textColor.withOpacity(0.05),
+                    color: isCompleted ? accent.withOpacity(0.6) : theme.textColor.withOpacity(0.05),
                     width: isCompleted ? 1.5 : 1,
                   ),
                   boxShadow: isCompleted
@@ -105,7 +114,7 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
                 ),
                 child: Row(
                   children: [
-                    // ANIMATED CHECKBOX
+                    // CHECKBOX
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       padding: const EdgeInsets.all(10),
@@ -113,17 +122,13 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
                         color: isCompleted ? accent : accent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                        child: isCompleted
-                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20, key: ValueKey('done'))
-                            : Icon(Icons.circle_outlined, color: accent, size: 20, key: const ValueKey('todo')),
-                      ),
+                      child: isCompleted
+                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                          : Icon(Icons.circle_outlined, color: accent, size: 20),
                     ),
                     const SizedBox(width: 14),
 
-                    // TEXT CONTENT
+                    // TEXT INFO
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,21 +139,27 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
                               color: isCompleted ? theme.subText : theme.textColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                              decoration: isCompleted ? TextDecoration.lineThrough : null,
                               decorationColor: accent,
                             ),
-                            child: Text(widget.quest['title']),
+                            child: Text(widget.task.title), // <--- Uses Task Title
                           ),
                           const SizedBox(height: 4),
+                          // CATEGORY LABEL
                           Text(
-                            subtitle,
-                            style: TextStyle(color: theme.subText, fontSize: 12),
+                            widget.task.category.toUpperCase(), // <--- Uses Task Category
+                            style: TextStyle(
+                              color: accent, // <--- Uses Category Color
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ],
                       ),
                     ),
 
-                    // XP BADGE
+                    // XP REWARD
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -156,7 +167,7 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "+${widget.quest['xp']} XP",
+                        "+${widget.task.xpReward} XP",
                         style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ),

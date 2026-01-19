@@ -1,179 +1,214 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-  FlutterLocalNotificationsPlugin();
-
+  // --- INITIALIZATION ---
   static Future<void> init() async {
     tz.initializeTimeZones();
 
-    // 1. Setup Timezone
-    String timeZoneName;
-    try {
-      final dynamic result = await FlutterTimezone.getLocalTimezone();
-      timeZoneName = result.toString();
-    } catch (e) {
-      timeZoneName = 'UTC';
-    }
-
-    try {
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-    } catch (e) {
-      tz.setLocalLocation(tz.getLocation('UTC'));
-    }
-
-    // 2. Setup Icons
-    const AndroidInitializationSettings androidSettings =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const DarwinInitializationSettings iosSettings =
-    DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+    await AwesomeNotifications().initialize(
+      // Ensure you have an app icon, or use null for default flutter icon
+      null,
+      [
+        // 1. High Priority Channel (Timer, Alarm) - For Clock Screen
+        NotificationChannel(
+          channelGroupKey: 'tools_channel_group',
+          channelKey: 'tools_channel',
+          channelName: 'Tools & Utilities',
+          channelDescription: 'Timers, Alarms, and Stopwatch',
+          defaultColor: const Color(0xFF00D2D3),
+          importance: NotificationImportance.Max,
+          playSound: true,
+          enableVibration: true,
+          criticalAlerts: true, // Bypasses silent mode if permissions granted
+        ),
+        // 2. Schedule Channel (Calendar) - For Calendar Screen
+        NotificationChannel(
+          channelGroupKey: 'schedule_channel_group',
+          channelKey: 'calendar_channel',
+          channelName: 'Calendar Events',
+          channelDescription: 'Scheduled agenda items',
+          defaultColor: const Color(0xFF6C63FF),
+          importance: NotificationImportance.High,
+          playSound: true,
+        ),
+        // 3. Engagement Channel (Streaks, Daily, Training) - For Profile Screen
+        NotificationChannel(
+          channelGroupKey: 'engagement_channel_group',
+          channelKey: 'engagement_channel',
+          channelName: 'Astra Uplink',
+          channelDescription: 'Daily briefings and streak alerts',
+          defaultColor: const Color(0xFFFFD700), // Gold
+          importance: NotificationImportance.High,
+          playSound: true,
+        ),
+      ],
+      channelGroups: [
+        NotificationChannelGroup(channelGroupKey: 'tools_channel_group', channelGroupName: 'Tools'),
+        NotificationChannelGroup(channelGroupKey: 'schedule_channel_group', channelGroupName: 'Schedule'),
+        NotificationChannelGroup(channelGroupKey: 'engagement_channel_group', channelGroupName: 'Engagement'),
+      ],
+      debug: true,
     );
 
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await _notificationsPlugin.initialize(settings);
+    // Check permissions
+    await AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
+      if (!isAllowed) {
+        AwesomeNotifications().requestPermissionToSendNotifications();
+      }
+    });
   }
 
   // =========================================================
-  // 1. MASCOT MESSAGE (DUOLINGO STYLE)
+  // FIX: METHODS REQUIRED BY CLOCK SCREEN
   // =========================================================
-  static Future<void> showMascotNotification({
-    required String title,
-    required String body,
-  }) async {
-    final int id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-    await _notificationsPlugin.show(
-      id,
-      title, // e.g. "Astra here..."
-      body,  // e.g. "The shadows are gathering..."
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'mascot_channel',
-          'Astra Messages',
-          channelDescription: 'Motivational messages from your companion',
-          importance: Importance.max,
-          priority: Priority.high,
-
-          // --- THE MAGIC SAUCE ---
-          // This renders the image on the right/left side like a chat head
-          largeIcon: DrawableResourceAndroidBitmap('astra_head'),
-
-          // Tint color for the small icon/app name (Use your Purple)
-          color: Color(0xFF6C63FF),
-
-          // Allows for longer text to be fully readable
-          styleInformation: BigTextStyleInformation(''),
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentSound: true,
-        ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // 2. PROJECT DEADLINES (One-time)
-  // =========================================================
-  static Future<void> scheduleDeadlineNotification({
-    required int id,
-    required String title,
-    required DateTime deadline,
-  }) async {
-    final scheduledDate = DateTime(
-      deadline.year,
-      deadline.month,
-      deadline.day,
-      9, // 9:00 AM
-      0,
-    );
-
-    if (scheduledDate.isBefore(DateTime.now())) return;
-
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      '⚠️ DEADLINE ALERT: $title',
-      'This operation requires your attention today, Hunter.',
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'project_channel',
-          'Project Deadlines',
-          channelDescription: 'Notifications for long-term project deadlines',
-          importance: Importance.max,
-          priority: Priority.high,
-          color: Color(0xFFFF5252),
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.absoluteTime,
-    );
-  }
-
-  // =========================================================
-  // 3. DAILY ALARMS (Recurring)
-  // =========================================================
   static Future<void> scheduleAlarm({
     required int id,
     required String title,
-    required TimeOfDay time,
+    required DateTime time,
   }) async {
-    final now = DateTime.now();
-    var scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-
-    // If time passed, schedule for tomorrow
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      '⏰ SYSTEM ALERT: $title',
-      'It is time to act, Hunter.',
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'alarm_channel',
-          'Alarms',
-          channelDescription: 'Daily system alerts',
-          importance: Importance.max,
-          priority: Priority.high,
-          color: Color(0xFF6C63FF),
-          fullScreenIntent: true,
-        ),
-        iOS: DarwinNotificationDetails(),
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: id,
+        channelKey: 'tools_channel',
+        title: '⏰ $title',
+        body: 'Alarm is ringing!',
+        category: NotificationCategory.Alarm,
+        wakeUpScreen: true,
+        fullScreenIntent: true,
+        autoDismissible: false,
+        // Make sure this asset exists, or comment out if not
+        bigPicture: 'asset://assets/notifications/astra_focused.png',
+        notificationLayout: NotificationLayout.BigPicture,
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeats daily
+      schedule: NotificationCalendar.fromDate(date: time),
+      actionButtons: [
+        NotificationActionButton(key: 'DISMISS', label: 'Dismiss', actionType: ActionType.DismissAction),
+      ],
+    );
+  }
+
+  static Future<void> cancelNotification(int id) async {
+    await AwesomeNotifications().cancel(id);
+  }
+
+  // =========================================================
+  // FIX: METHODS REQUIRED BY CALENDAR SCREEN
+  // =========================================================
+
+  static Future<void> scheduleDeadlineNotification({
+    required int id,
+    required String title,
+    required DateTime date,
+  }) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: id,
+        channelKey: 'calendar_channel',
+        title: '📅 Deadline: $title',
+        body: 'Scheduled for ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
+        // Make sure this asset exists, or comment out if not
+        bigPicture: 'asset://assets/notifications/astra_calendar.png',
+        notificationLayout: NotificationLayout.BigPicture,
+      ),
+      schedule: NotificationCalendar.fromDate(date: date),
     );
   }
 
   // =========================================================
-  // 4. CANCEL NOTIFICATION
+  // METHODS FOR PROFILE SCREEN (Engagement)
   // =========================================================
-  static Future<void> cancelNotification(int id) async {
-    await _notificationsPlugin.cancel(id);
+
+  // 1. Daily Summary
+  static Future<void> scheduleDailySummary(TimeOfDay time) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 888,
+        channelKey: 'engagement_channel',
+        title: '☀️ Daily Briefing',
+        body: 'Commander, your tasks and stats are ready for review.',
+        bigPicture: 'asset://assets/notifications/astra_happy.png',
+        notificationLayout: NotificationLayout.BigPicture,
+      ),
+      schedule: NotificationCalendar(
+        hour: time.hour,
+        minute: time.minute,
+        repeats: true,
+      ),
+    );
+  }
+
+  // 2. Training Reminders
+  static Future<void> scheduleTrainingReminders(TimeOfDay time1, TimeOfDay time2) async {
+    // Session 1
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 701,
+        channelKey: 'engagement_channel',
+        title: '⚡ Training Session 1',
+        body: 'Time to grind XP. Let\'s get moving!',
+        bigPicture: 'asset://assets/notifications/astra_happy.png',
+        notificationLayout: NotificationLayout.BigPicture,
+      ),
+      schedule: NotificationCalendar(hour: time1.hour, minute: time1.minute, repeats: true),
+    );
+
+    // Session 2
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 702,
+        channelKey: 'engagement_channel',
+        title: '🔥 Training Session 2',
+        body: 'Finish the day strong, Commander.',
+        bigPicture: 'asset://assets/notifications/astra_focused.png',
+        notificationLayout: NotificationLayout.BigPicture,
+      ),
+      schedule: NotificationCalendar(hour: time2.hour, minute: time2.minute, repeats: true),
+    );
+  }
+
+  // 3. Sad Astra (Streak Protection)
+  static Future<void> resetStreakProtection() async {
+    // Cancel any existing "Sad Astra" alert
+    await AwesomeNotifications().cancel(666);
+
+    // Schedule new one for 24 hours later
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 666,
+        channelKey: 'engagement_channel',
+        title: 'Astra misses you...',
+        body: 'We haven\'t seen you in 24h. Your streak is at risk!',
+        bigPicture: 'asset://assets/notifications/astra_sad.png',
+        notificationLayout: NotificationLayout.BigPicture,
+      ),
+      schedule: NotificationCalendar.fromDate(
+        date: DateTime.now().add(const Duration(hours: 24)),
+      ),
+    );
+  }
+
+  // --- UTILITIES ---
+
+  static Future<void> cancelBriefing() async {
+    await AwesomeNotifications().cancel(888);
+  }
+
+  static Future<void> cancelAll() async {
+    await AwesomeNotifications().cancelAll();
+  }
+
+  static Future<void> showInstant(String title, String body) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 0,
+        channelKey: 'engagement_channel',
+        title: title,
+        body: body,
+      ),
+    );
   }
 }

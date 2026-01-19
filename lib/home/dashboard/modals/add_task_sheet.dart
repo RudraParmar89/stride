@@ -13,9 +13,32 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   double difficulty = 1.0;
   final TextEditingController _controller = TextEditingController();
 
+  // --- COLOR LOGIC ---
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'strength':
+      case 'fitness':
+        return const Color(0xFFFF5252); // Red
+      case 'intellect':
+      case 'study':
+      case 'coding':
+        return const Color(0xFF6C63FF); // Purple
+      case 'vitality':
+      case 'health':
+        return const Color(0xFF00D2D3); // Cyan
+      case 'spirit':
+      case 'meditation':
+        return const Color(0xFFFFD700); // Gold
+      default:
+        return const Color(0xFF54A0FF); // Blue (Default)
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. LISTEN TO THEME
+    // 1. Get the dynamic color for the currently selected class
+    final Color activeColor = _getCategoryColor(selectedClass);
+
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
@@ -24,7 +47,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: theme.cardColor, // <--- DYNAMIC BACKGROUND
+            color: theme.cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             boxShadow: [
               BoxShadow(
@@ -70,13 +93,14 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   hintText: "Enter quest name...",
                   hintStyle: TextStyle(color: theme.subText.withOpacity(0.5)),
                   filled: true,
-                  fillColor: theme.bgColor, // <--- DYNAMIC INPUT BG
+                  fillColor: theme.bgColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: const EdgeInsets.all(16),
                 ),
+                autofocus: true,
               ),
               const SizedBox(height: 24),
 
@@ -94,30 +118,34 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               // Class Chips
               Wrap(
                 spacing: 10,
+                runSpacing: 10,
                 children: ["Strength", "Intellect", "Vitality", "Spirit"].map((type) {
                   bool isSelected = selectedClass == type;
+                  Color categoryColor = _getCategoryColor(type);
+
                   return GestureDetector(
                     onTap: () => setState(() => selectedClass = type),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? theme.accentColor
-                            : theme.bgColor, // <--- DYNAMIC CHIP BG
+                        color: isSelected ? categoryColor : theme.bgColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: isSelected
-                                ? theme.accentColor
-                                : theme.subText.withOpacity(0.2)
+                            color: isSelected ? categoryColor : theme.subText.withOpacity(0.1),
+                            width: 1.5
                         ),
+                        boxShadow: isSelected
+                            ? [BoxShadow(color: categoryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 2))]
+                            : [],
                       ),
                       child: Text(
-                        type,
+                        type.toUpperCase(),
                         style: TextStyle(
-                          color: isSelected ? Colors.white : theme.subText,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                            color: isSelected ? Colors.white : theme.subText,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.5
                         ),
                       ),
                     ),
@@ -142,7 +170,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   Text(
                     "+${(difficulty * 100).toInt()} XP",
                     style: TextStyle(
-                        color: theme.accentColor,
+                        color: activeColor, // <--- UPDATED: Matches Class Color
                         fontWeight: FontWeight.bold
                     ),
                   ),
@@ -153,7 +181,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 min: 0.5,
                 max: 2.0,
                 divisions: 3,
-                activeColor: theme.accentColor,
+                activeColor: activeColor, // <--- UPDATED: Matches Class Color
                 inactiveColor: theme.bgColor,
                 onChanged: (val) => setState(() => difficulty = val),
               ),
@@ -168,17 +196,16 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     if (_controller.text.isNotEmpty) {
                       Navigator.pop(context, {
                         'title': _controller.text,
-                        'subtitle': "Custom • $selectedClass",
+                        'category': selectedClass,
                         'xp': (difficulty * 100).toInt(),
-                        'isCompleted': false
                       });
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.accentColor,
+                    backgroundColor: activeColor, // <--- UPDATED: Matches Class Color
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 5,
-                    shadowColor: theme.accentColor.withOpacity(0.4),
+                    shadowColor: activeColor.withOpacity(0.4), // <--- UPDATED
                   ),
                   child: const Text(
                     "INITIATE QUEST",

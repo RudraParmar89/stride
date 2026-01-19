@@ -1,91 +1,104 @@
 import 'package:flutter/material.dart';
-import '../../../../theme/theme_manager.dart'; // <--- IMPORT THEME MANAGER
+import '../../../../theme/theme_manager.dart';
 
 class HunterBentoSection extends StatelessWidget {
-  // 1. ACCEPT STEPS VARIABLE
   final int steps;
+  // --- NEW: Real Data Inputs ---
+  final int completedTasks;
+  final int totalTasks;
 
   const HunterBentoSection({
     super.key,
-    this.steps = 0, // Default to 0 if not provided
+    this.steps = 0,
+    this.completedTasks = 0, // Default to 0
+    this.totalTasks = 0,     // Default to 0
   });
 
   @override
   Widget build(BuildContext context) {
-    // 1. LISTEN TO THEME
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
         final theme = ThemeManager();
 
+        // Calculate progress for tasks (avoid division by zero)
+        double taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) : 0.0;
+        String taskString = "$completedTasks/$totalTasks";
+
         return Column(
           children: [
-            // ROW 1: Two Wide Cards (Detailed)
+            // ROW 1: Two Wide Cards
             Row(
               children: [
+                // 1. STRENGTH (Steps)
                 Expanded(
                   child: _buildCompactCard(
                     context,
-                    theme, // Pass Theme
+                    theme,
                     title: "STRENGTH",
-                    value: _formatSteps(steps), // <--- USE REAL STEPS HERE
+                    value: _formatSteps(steps),
                     unit: "Steps",
                     icon: Icons.directions_walk_rounded,
-                    color: const Color(0xFFFF5252), // Red (Specific to Strength)
-                    progress: (steps / 10000).clamp(0.0, 1.0), // <--- DYNAMIC PROGRESS (Goal: 10k)
+                    color: const Color(0xFFFF5252), // Red
+                    progress: (steps / 10000).clamp(0.0, 1.0),
                   ),
                 ),
                 const SizedBox(width: 10),
+
+                // 2. INTELLECT (Real Task Progress)
                 Expanded(
                   child: _buildCompactCard(
                     context,
-                    theme, // Pass Theme
+                    theme,
                     title: "INTELLECT",
-                    value: "4h 12m",
-                    unit: "Focus",
-                    icon: Icons.psychology_rounded,
-                    color: const Color(0xFF6C63FF), // Purple (Specific to Intellect)
-                    progress: 0.6,
+                    value: taskString, // <--- REAL DATA
+                    unit: "Missions",
+                    icon: Icons.check_circle_outline_rounded, // Changed icon to match context
+                    color: const Color(0xFF6C63FF), // Purple
+                    progress: taskProgress, // <--- REAL PROGRESS
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 10), // Tight spacing
+            const SizedBox(height: 10),
 
-            // ROW 2: Three Mini Cards (Quick Glance)
+            // ROW 2: Three Mini Cards
             Row(
               children: [
                 Expanded(
                   child: _buildMiniCard(
                     context,
-                    theme, // Pass Theme
+                    theme,
                     value: "1.2L",
                     unit: "Water",
                     icon: Icons.water_drop_rounded,
-                    color: const Color(0xFF00D2D3), // Cyan
+                    color: const Color(0xFF00D2D3),
                   ),
                 ),
                 const SizedBox(width: 10),
+
+                // Tasks Mini Card (Mirroring Intellect)
                 Expanded(
                   child: _buildMiniCard(
                     context,
-                    theme, // Pass Theme
-                    value: "5/8",
+                    theme,
+                    value: taskString, // <--- REAL DATA
                     unit: "Tasks",
-                    icon: Icons.check_circle_outline_rounded,
-                    color: const Color(0xFFFFD700), // Gold
+                    icon: Icons.list_alt_rounded,
+                    color: const Color(0xFFFFD700),
                   ),
                 ),
+
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildMiniCard(
                     context,
-                    theme, // Pass Theme
+                    theme,
                     value: "7h",
                     unit: "Sleep",
                     icon: Icons.bedtime_rounded,
-                    color: const Color(0xFFE056FD), // Magenta
+                    color: const Color(0xFFE056FD),
                   ),
                 ),
               ],
@@ -96,15 +109,14 @@ class HunterBentoSection extends StatelessWidget {
     );
   }
 
-  // Helper to format numbers (e.g., 1200 -> "1,200")
   String _formatSteps(int steps) {
     if (steps > 1000) {
-      return "${(steps / 1000).toStringAsFixed(1)}k"; // 1.2k
+      return "${(steps / 1000).toStringAsFixed(1)}k";
     }
     return steps.toString();
   }
 
-  // WIDE CARD (Top Row)
+  // WIDE CARD
   Widget _buildCompactCard(BuildContext context, ThemeManager theme, {
     required String title,
     required String value,
@@ -117,7 +129,7 @@ class HunterBentoSection extends StatelessWidget {
       height: 90,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.cardColor, // <--- DYNAMIC BACKGROUND
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.textColor.withOpacity(0.05)),
         boxShadow: theme.isDark ? [] : [
@@ -138,7 +150,7 @@ class HunterBentoSection extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: theme.subText, // <--- DYNAMIC SUBTEXT
+                      color: theme.subText,
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -150,7 +162,7 @@ class HunterBentoSection extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                    color: theme.textColor, // <--- DYNAMIC TEXT
+                    color: theme.textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold
                 ),
@@ -158,13 +170,12 @@ class HunterBentoSection extends StatelessWidget {
               Text(
                 unit,
                 style: TextStyle(
-                    color: theme.subText, // <--- DYNAMIC SUBTEXT
+                    color: theme.subText,
                     fontSize: 10
                 ),
               ),
             ],
           ),
-          // Progress Circle
           SizedBox(
             width: 34,
             height: 34,
@@ -177,7 +188,6 @@ class HunterBentoSection extends StatelessWidget {
                   backgroundColor: theme.subText.withOpacity(0.1),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                 ),
-                // Tiny dot in center
                 Container(
                   width: 4, height: 4,
                   decoration: BoxDecoration(color: color.withOpacity(0.5), shape: BoxShape.circle),
@@ -190,7 +200,7 @@ class HunterBentoSection extends StatelessWidget {
     );
   }
 
-  // MINI CARD (Bottom Row)
+  // MINI CARD
   Widget _buildMiniCard(BuildContext context, ThemeManager theme, {
     required String value,
     required String unit,
@@ -201,7 +211,7 @@ class HunterBentoSection extends StatelessWidget {
       height: 90,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.cardColor, // <--- DYNAMIC BACKGROUND
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.textColor.withOpacity(0.05)),
         boxShadow: theme.isDark ? [] : [
@@ -226,7 +236,7 @@ class HunterBentoSection extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                    color: theme.textColor, // <--- DYNAMIC TEXT
+                    color: theme.textColor,
                     fontSize: 15,
                     fontWeight: FontWeight.bold
                 ),
@@ -234,7 +244,7 @@ class HunterBentoSection extends StatelessWidget {
               Text(
                 unit,
                 style: TextStyle(
-                    color: theme.subText, // <--- DYNAMIC SUBTEXT
+                    color: theme.subText,
                     fontSize: 10
                 ),
               ),

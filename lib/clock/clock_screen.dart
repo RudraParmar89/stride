@@ -6,7 +6,7 @@ import 'dart:ui';
 // Import Theme
 import '../theme/theme_manager.dart';
 
-// Import Notification Service (Keep your existing file)
+// Import Notification Service
 import '../services/notification_service.dart';
 
 class ClockScreen extends StatefulWidget {
@@ -29,48 +29,82 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // 1. LISTEN TO THEME
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
         final theme = ThemeManager();
 
         return Scaffold(
-          backgroundColor: theme.bgColor, // <--- DYNAMIC BG
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            title: Text(
-              "TEMPORAL SYSTEM",
-              style: TextStyle(
-                  color: theme.subText, // <--- DYNAMIC SUBTEXT
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5
-              ),
-            ),
-            centerTitle: true,
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: theme.accentColor, // <--- DYNAMIC ACCENT
-              labelColor: theme.accentColor,
-              unselectedLabelColor: theme.subText,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
-              tabs: const [
-                Tab(text: "FOCUS"),
-                Tab(text: "ALARM"),
-                Tab(text: "STOPWATCH"),
+          backgroundColor: theme.bgColor,
+
+          // MOVED DOWN: Using SafeArea + Column instead of AppBar
+          body: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // --- SPACER TO PUSH CONTENT DOWN ---
+                const SizedBox(height: 30),
+
+                // --- CUSTOM HEADER ---
+                Center(
+                  child: Text(
+                    "TEMPORAL SYSTEM",
+                    style: TextStyle(
+                        color: theme.subText,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // --- CUSTOM TAB BAR ---
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: theme.textColor.withOpacity(0.05)),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    // "Pill" Style Indicator
+                    indicator: BoxDecoration(
+                      color: theme.accentColor,
+                      borderRadius: BorderRadius.circular(21),
+                      boxShadow: [BoxShadow(color: theme.accentColor.withOpacity(0.3), blurRadius: 10)],
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: Colors.white, // Text color when selected
+                    unselectedLabelColor: theme.subText, // Text color when unselected
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
+                    tabs: const [
+                      Tab(text: "FOCUS"),
+                      Tab(text: "ALARM"),
+                      Tab(text: "STOPWATCH"),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // --- TAB VIEW ---
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: const [
+                      FocusTimerTab(),
+                      AlarmTab(),
+                      StopwatchTab(),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-          body: TabBarView(
-            controller: _tabController,
-            children: const [
-              FocusTimerTab(),
-              AlarmTab(),
-              StopwatchTab(),
-            ],
           ),
         );
       },
@@ -79,7 +113,7 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 }
 
 // =========================================================
-// 1. FOCUS TIMER TAB (THEMED)
+// 1. FOCUS TIMER TAB
 // =========================================================
 class FocusTimerTab extends StatefulWidget {
   const FocusTimerTab({super.key});
@@ -123,10 +157,8 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
     setState(() => _remainingSeconds = _initialSeconds);
   }
 
-  // XP Reward System (Themed)
   void _showCompletionDialog() {
-    final theme = ThemeManager(); // Access singleton directly for dialogs
-
+    final theme = ThemeManager();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -235,12 +267,10 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 500),
-          // Subtle tint when running, clean when not
           color: _isRunning ? theme.accentColor.withOpacity(0.05) : Colors.transparent,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-
               // Task Linking Dropdown
               Container(
                 margin: const EdgeInsets.only(bottom: 40),
@@ -322,6 +352,8 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
                   _buildButton(theme, Icons.edit_outlined, theme.subText, _editDuration),
                 ],
               ),
+
+              const SizedBox(height: 100), // Bottom padding
             ],
           ),
         );
@@ -350,7 +382,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 }
 
 // =========================================================
-// 2. ALARM TAB (THEMED)
+// 2. ALARM TAB (FIXED)
 // =========================================================
 class AlarmTab extends StatefulWidget {
   const AlarmTab({super.key});
@@ -364,11 +396,30 @@ class _AlarmTabState extends State<AlarmTab> {
     {'id': 1, 'time': const TimeOfDay(hour: 6, minute: 0), 'label': 'Morning Training', 'isActive': true},
   ];
 
+  // Helper to convert TimeOfDay to next DateTime instance
+  DateTime _nextInstanceOfTime(TimeOfDay time) {
+    final now = DateTime.now();
+    DateTime scheduledDate = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
   void _toggleAlarm(int index, bool val) {
     setState(() => alarms[index]['isActive'] = val);
     final alarm = alarms[index];
+
     if (val) {
-      NotificationService.scheduleAlarm(id: alarm['id'], title: alarm['label'], time: alarm['time']);
+      // FIX: Convert TimeOfDay to DateTime before scheduling
+      final TimeOfDay timeOfDay = alarm['time'];
+      final DateTime scheduledTime = _nextInstanceOfTime(timeOfDay);
+
+      NotificationService.scheduleAlarm(
+          id: alarm['id'],
+          title: alarm['label'],
+          time: scheduledTime // Passing DateTime now
+      );
     } else {
       NotificationService.cancelNotification(alarm['id']);
     }
@@ -380,7 +431,6 @@ class _AlarmTabState extends State<AlarmTab> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
-        // Theme the TimePicker
         return Theme(
           data: theme.isDark
               ? ThemeData.dark().copyWith(
@@ -395,11 +445,19 @@ class _AlarmTabState extends State<AlarmTab> {
     );
 
     if (picked != null) {
-      final newId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final newId = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Unique Int ID
       setState(() {
         alarms.add({'id': newId, 'time': picked, 'label': 'New Mission', 'isActive': true});
       });
-      NotificationService.scheduleAlarm(id: newId, title: "New Mission", time: picked);
+
+      // FIX: Convert TimeOfDay to DateTime before scheduling
+      final DateTime scheduledTime = _nextInstanceOfTime(picked);
+
+      NotificationService.scheduleAlarm(
+          id: newId,
+          title: "New Mission",
+          time: scheduledTime // Passing DateTime now
+      );
     }
   }
 
@@ -470,7 +528,7 @@ class _AlarmTabState extends State<AlarmTab> {
 }
 
 // =========================================================
-// 3. STOPWATCH TAB (THEMED)
+// 3. STOPWATCH TAB
 // =========================================================
 class StopwatchTab extends StatefulWidget {
   const StopwatchTab({super.key});
@@ -540,7 +598,7 @@ class _StopwatchTabState extends State<StopwatchTab> {
             Text(
               _formatStopwatchTime(_stopwatch.elapsedMilliseconds),
               style: TextStyle(
-                color: theme.textColor, // <--- DYNAMIC COLOR
+                color: theme.textColor,
                 fontSize: 64,
                 fontWeight: FontWeight.bold,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -574,6 +632,7 @@ class _StopwatchTabState extends State<StopwatchTab> {
                 ),
               ],
             ),
+            const SizedBox(height: 100), // Bottom padding
           ],
         );
       },

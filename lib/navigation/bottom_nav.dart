@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 class StrideBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -16,27 +15,73 @@ class StrideBottomNav extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Theme Colors
-    final Color barColor = isDark ? const Color(0xFF1E1E2C) : Colors.white; // Card color
+    final Color barColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
     final Color activeCircleColor = const Color(0xFF6C63FF); // Primary Purple
-    final Color iconColor = isDark ? Colors.white70 : Colors.grey;
-    final Color activeIconColor = Colors.white;
+    final Color iconColor = isDark ? Colors.white70 : Colors.grey.shade600;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+    final Color dividerColor = isDark ? Colors.white10 : Colors.grey.shade200;
 
-    return CurvedNavigationBar(
-      index: currentIndex,
-      height: 60.0, // Height of the bar
-      items: <Widget>[
-        Icon(Icons.home_rounded, size: 30, color: currentIndex == 0 ? activeIconColor : iconColor),
-        Icon(Icons.calendar_month_rounded, size: 30, color: currentIndex == 1 ? activeIconColor : iconColor),
-        Icon(Icons.bar_chart_rounded, size: 30, color: currentIndex == 2 ? activeIconColor : iconColor),
-        Icon(Icons.person_rounded, size: 30, color: currentIndex == 3 ? activeIconColor : iconColor),
-      ],
-      color: barColor,
-      buttonBackgroundColor: activeCircleColor, // The floating circle color
-      backgroundColor: Colors.transparent, // CRITICAL: Makes the curve transparent
-      animationCurve: Curves.easeInOut,
-      animationDuration: const Duration(milliseconds: 400),
-      onTap: onTap,
-      letIndexChange: (index) => true,
+    final List<IconData> icons = [
+      Icons.apps_rounded,
+      Icons.access_time_rounded,
+      Icons.calendar_today_rounded,
+      Icons.bar_chart_rounded,
+      Icons.person_rounded,
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: barColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          )
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(
+              icons.length,
+              (index) => GestureDetector(
+                onTap: () => onTap(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: currentIndex == index ? 20 : 12,
+                    vertical: currentIndex == index ? 10 : 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: currentIndex == index
+                        ? activeCircleColor.withOpacity(0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(
+                      currentIndex == index ? 16 : 12,
+                    ),
+                    border: currentIndex == index
+                        ? Border.all(
+                            color: activeCircleColor.withOpacity(0.3),
+                            width: 1.5,
+                          )
+                        : null,
+                  ),
+                  child: Icon(
+                    icons[index],
+                    color: currentIndex == index
+                        ? activeCircleColor
+                        : iconColor,
+                    size: currentIndex == index ? 26 : 24,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

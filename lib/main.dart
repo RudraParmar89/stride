@@ -6,12 +6,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 
 // Services
-import 'services/notification_service.dart'; // <--- IMPORT THIS
+import 'services/notification_service.dart';
 
 // Screens
 import 'splash/splash_screen.dart';
 import 'onboarding/onboarding_screen.dart';
-import 'onboarding/identity_protocol_screen.dart'; // <--- IMPORT THIS
+import 'onboarding/identity_protocol_screen.dart';
 import 'auth/login_screen.dart';
 import 'ascension/ascension_screen.dart';
 
@@ -36,11 +36,15 @@ Future<void> main() async {
 
   // Initialize Database
   await Hive.initFlutter();
-  await Hive.openBox('stepBox');
-  await Hive.openBox('settingsBox');
+
+  // --- OPEN ALL BOXES (CRITICAL FOR APP FUNCTIONALITY) ---
+  await Hive.openBox('stepBox');      // Stores XP & Level
+  await Hive.openBox('settingsBox');  // Stores Theme & Accent Color
+  await Hive.openBox('statsBox');     // Stores Analytics & Focus History
+  await Hive.openBox('tasks');        // Stores Quests & Tasks
 
   // Initialize Notifications (Astra)
-  await NotificationService.init(); // <--- CRITICAL: Start the "System"
+  await NotificationService.init();
 
   runApp(
     MultiProvider(
@@ -76,10 +80,14 @@ class StrideApp extends StatelessWidget {
       routes: {
         '/': (context) => const SplashScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
-        '/identity': (context) => const IdentityProtocolScreen(), // <--- NEW ROUTE
+        '/identity': (context) => const IdentityProtocolScreen(),
         '/auth': (context) => const LoginScreen(),
-        '/home': (context) => const AppShell(),
-        '/ascension': (context) => const AscensionScreen(),
+        '/home': (context) => AppShell(),
+        '/ascension': (context) => AscensionScreen(
+          onComplete: () {
+            Navigator.of(context).pushReplacementNamed('/home');
+          },
+        ),
       },
     );
   }
