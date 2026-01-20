@@ -6,14 +6,14 @@ import 'package:uuid/uuid.dart';
 class Task {
   final String id;
   final String title;
-  final String category; // <--- Added Category
+  final String category;
   bool isCompleted;
   final int xpReward;
 
   Task({
     required this.id,
     required this.title,
-    this.category = "General", // Default
+    this.category = "General",
     this.isCompleted = false,
     this.xpReward = 50,
   });
@@ -60,7 +60,6 @@ class TaskController extends ChangeNotifier {
   }
 
   void _addDummyData() {
-    // STARTING MISSIONS WITH CATEGORIES
     final List<Map<String, String>> starters = [
       {"title": "Morning Run (2km)", "cat": "Strength"},
       {"title": "Read Neural Networks", "cat": "Intellect"},
@@ -105,5 +104,13 @@ class TaskController extends ChangeNotifier {
     _box.delete(id);
     _tasks.removeWhere((t) => t.id == id);
     notifyListeners();
+  }
+
+  // --- THIS WAS MISSING: THE RESET METHOD ---
+  Future<void> resetAllData() async {
+    await _box.clear(); // Wipes the database
+    _tasks.clear();     // Wipes local memory
+    _addDummyData();    // Adds fresh starter tasks
+    notifyListeners();  // Tells the UI to update
   }
 }

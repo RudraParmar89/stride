@@ -6,6 +6,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Needed for User Name
 
 // --- IMPORTS ---
 import '../../theme/theme_manager.dart';
@@ -13,6 +14,7 @@ import '../../controllers/xp_controller.dart';
 import '../../controllers/task_controller.dart';
 import '../../services/step_tracker_service.dart';
 import 'modals/add_task_sheet.dart';
+import '../chat/chat_page.dart'; // <--- CHAT IMPORT
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -57,11 +59,10 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
       builder: (context) => const AddTaskSheet(),
     );
 
-    // This ensures the Category (Red/Purple/etc) is actually passed to the controller
     if (result != null && result['title'] != null) {
       controller.addTask(
           result['title'],
-          category: result['category'] ?? "General" // <--- CRITICAL FOR COLOR
+          category: result['category'] ?? "General"
       );
     }
   }
@@ -96,7 +97,10 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
+
+                  // --- HEADER WITH CHAT BUTTON ---
                   _HeaderSection(pulseAnimation: _pulseAnimation),
+
                   const SizedBox(height: 28),
                   const _ProgressSection(),
                   const SizedBox(height: 24),
@@ -137,6 +141,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
 //  INTERNAL COMPONENT CLASSES
 // ============================================================================
 
+// --- UPDATED HEADER TO MATCH YOUR SCREENSHOT ---
 class _HeaderSection extends StatelessWidget {
   final Animation<double> pulseAnimation;
   const _HeaderSection({required this.pulseAnimation});
@@ -150,17 +155,13 @@ class _HeaderSection extends StatelessWidget {
     return const AssetImage('assets/profile/astra_happy.png');
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return "GOOD MORNING, COMMANDER.";
-    if (hour < 18) return "OPERATIONS ACTIVE.";
-    return "NIGHT OPS ENGAGED.";
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = ThemeManager();
     final xpController = context.watch<XpController>();
+    final user = FirebaseAuth.instance.currentUser;
+    final userName = user?.displayName?.toUpperCase() ?? "COMMANDER";
+
     const Color emberColor = Color(0xFFFF9900);
 
     return Column(
@@ -169,6 +170,7 @@ class _HeaderSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // LEFT SIDE: AVATAR + NAME
             Row(
               children: [
                 ValueListenableBuilder(
@@ -191,17 +193,58 @@ class _HeaderSection extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_getGreeting(), style: TextStyle(color: theme.subText, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                    Text("RISE, HUNTER", style: TextStyle(color: theme.subText, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                     const SizedBox(height: 4),
-                    Text("SYSTEM ONLINE", style: TextStyle(color: theme.textColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    Text(userName, style: TextStyle(color: theme.textColor, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   ],
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: emberColor.withOpacity(0.3)), boxShadow: [BoxShadow(color: emberColor.withOpacity(0.15), blurRadius: 8)]),
-              child: Row(children: [const Icon(Icons.local_fire_department_rounded, color: emberColor, size: 16), const SizedBox(width: 6), Text("${xpController.embers}", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontFamily: 'Courier', fontSize: 13))]),
+
+            // RIGHT SIDE: EMBERS + CHAT BUTTON + NOTIFICATION
+            Row(
+              children: [
+                // 1. EMBERS PILL
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: emberColor.withOpacity(0.3))),
+                  child: Row(children: [const Icon(Icons.local_fire_department_rounded, color: emberColor, size: 14), const SizedBox(width: 4), Text("${xpController.embers}", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 12))]),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 2. NEW: ASTRA CHAT BUTTON
+                GestureDetector(
+                  onTap: () {
+                    // Open the Chat Page
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatPage()));
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: theme.accentColor.withOpacity(0.5)),
+                        boxShadow: [BoxShadow(color: theme.accentColor.withOpacity(0.1), blurRadius: 8)]
+                    ),
+                    child: Icon(Icons.chat_bubble_rounded, color: theme.accentColor, size: 18),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // 3. NOTIFICATION BELL (Matches your screenshot)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: theme.cardColor, shape: BoxShape.circle),
+                  child: Stack(
+                    children: [
+                      Icon(Icons.notifications_none_rounded, color: theme.textColor, size: 20),
+                      Positioned(right: 0, top: 0, child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle)))
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -209,6 +252,10 @@ class _HeaderSection extends StatelessWidget {
     );
   }
 }
+
+// ... (KEEP THE REST OF THE CLASSES EXACTLY THE SAME) ...
+// _ProgressSection, _HunterBentoSection, _QuickActionsSection, _DailyQuestSection, _QuestTile, _SideQuestSection
+// Just copy them from the previous version or keep them if you only update the Header class.
 
 class _ProgressSection extends StatelessWidget {
   const _ProgressSection();
@@ -222,17 +269,47 @@ class _ProgressSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(24), border: Border.all(color: theme.accentColor.withOpacity(0.1)), boxShadow: theme.isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row( // Using Row to match your "Performance Peaking" screenshot style
         children: [
-          Row(children: [Icon(Icons.insights_rounded, color: theme.accentColor, size: 20), const SizedBox(width: 8), Text("SYSTEM ANALYSIS", style: TextStyle(color: theme.textColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1))]),
-          const SizedBox(height: 10),
-          Text("Level ${xpController.level} Active", style: TextStyle(color: theme.textColor, fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
-          Text("$nextLevelXp XP required for Level ${xpController.level + 1}.", style: TextStyle(color: theme.subText, fontSize: 12)),
-          const SizedBox(height: 15),
-          ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: (xpController.currentXp % 1000) / 1000, backgroundColor: theme.subText.withOpacity(0.1), valueColor: AlwaysStoppedAnimation<Color>(theme.accentColor), minHeight: 6)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [Icon(Icons.insights_rounded, color: theme.accentColor, size: 16), const SizedBox(width: 8), Text("SYSTEM ANALYSIS", style: TextStyle(color: theme.textColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))]),
+                const SizedBox(height: 10),
+                Text("Performance Peaking", style: TextStyle(color: theme.textColor, fontSize: 18, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text("You are on track to reach Level ${xpController.level + 1} by Friday.", style: TextStyle(color: theme.subText, fontSize: 12)),
+                const SizedBox(height: 15),
+                // Simple bar chart visual
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _bar(theme, 20, false), const SizedBox(width: 4),
+                    _bar(theme, 30, false), const SizedBox(width: 4),
+                    _bar(theme, 25, false), const SizedBox(width: 4),
+                    _bar(theme, 45, true),
+                  ],
+                )
+              ],
+            ),
+          ),
+          // Character Image from screenshot
+          SizedBox(
+            width: 80, height: 80,
+            child: Image.asset('assets/profile/astra_focused.png', fit: BoxFit.contain, errorBuilder: (c,e,s) => Icon(Icons.person, size: 40, color: theme.subText)),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _bar(ThemeManager theme, double height, bool active) {
+    return Container(
+      width: 8, height: height,
+      decoration: BoxDecoration(
+          color: active ? theme.accentColor : theme.subText.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(4)
       ),
     );
   }
@@ -283,17 +360,31 @@ class _QuickActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ThemeManager();
-    return GestureDetector(
-      onTap: () {},
+    return Row(
+      children: [
+        _miniTile(theme, Icons.water_drop_rounded, "1.2L", "Water", const Color(0xFF00D2D3)),
+        const SizedBox(width: 10),
+        _miniTile(theme, Icons.task_alt_rounded, "5/5", "Tasks", const Color(0xFFFFD700)),
+        const SizedBox(width: 10),
+        _miniTile(theme, Icons.nightlight_round, "7h", "Sleep", const Color(0xFFC56CF0)),
+      ],
+    );
+  }
+
+  Widget _miniTile(ThemeManager theme, IconData icon, String val, String label, Color color) {
+    return Expanded(
       child: Container(
-        width: double.infinity, height: 64, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.textColor.withOpacity(0.1)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))]),
-        child: Row(children: [
-          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: theme.accentColor.withOpacity(0.2), shape: BoxShape.circle), child: Icon(Icons.timer_outlined, color: theme.accentColor, size: 24)),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text("START FOCUS", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 16)), Text("0h 0m focused today", style: TextStyle(color: theme.subText, fontSize: 13))])),
-          Icon(Icons.play_circle_fill_rounded, color: theme.textColor, size: 36),
-        ]),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, size: 14, color: color)),
+            const SizedBox(height: 8),
+            Text(val, style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(label, style: TextStyle(color: theme.subText, fontSize: 10)),
+          ],
+        ),
       ),
     );
   }
@@ -311,8 +402,28 @@ class _DailyQuestSection extends StatelessWidget {
     final theme = ThemeManager();
     return Column(
       children: [
+        // Start Focus Button from screenshot
+        Container(
+          width: double.infinity, height: 60,
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]
+          ),
+          child: Row(
+            children: [
+              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: theme.accentColor.withOpacity(0.1), shape: BoxShape.circle), child: Icon(Icons.timer_outlined, color: theme.accentColor)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text("START FOCUS", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold)), Text("0h 0m focused today", style: TextStyle(color: theme.subText, fontSize: 12))])),
+              Icon(Icons.play_circle_fill_rounded, size: 32, color: theme.textColor),
+            ],
+          ),
+        ),
+
         Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("ACTIVE PROTOCOLS", style: TextStyle(color: theme.textColor, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          Text("ACTIVE PROTOCOLS", style: TextStyle(color: theme.textColor, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
           Text("${tasks.where((t) => !t.isCompleted).length} PENDING", style: TextStyle(color: theme.subText, fontSize: 12, fontWeight: FontWeight.bold)),
         ])),
         const SizedBox(height: 16),
@@ -323,7 +434,6 @@ class _DailyQuestSection extends StatelessWidget {
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
-            // Passed the delete callback here
             return _QuestTile(task: task, index: index, onTap: () => onQuestToggle(task.id), onDelete: () => onQuestDelete(task.id));
           },
         ),
@@ -332,7 +442,7 @@ class _DailyQuestSection extends StatelessWidget {
   }
 }
 
-// --- QUEST TILE WITH VISIBLE DELETE BUTTON & COLORS ---
+// --- QUEST TILE ---
 class _QuestTile extends StatefulWidget {
   final Task task;
   final int index;
@@ -360,24 +470,13 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
     widget.onTap();
   }
 
-  // --- COLOR LOGIC ---
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'strength':
-      case 'fitness':
-        return const Color(0xFFFF5252); // Red
-      case 'intellect':
-      case 'study':
-      case 'coding':
-        return const Color(0xFF6C63FF); // Purple
-      case 'vitality':
-      case 'health':
-        return const Color(0xFF00D2D3); // Cyan
-      case 'spirit':
-      case 'meditation':
-        return const Color(0xFFFFD700); // Gold
-      default:
-        return const Color(0xFF54A0FF); // Blue (Default)
+      case 'strength': return const Color(0xFFFF5252);
+      case 'intellect': return const Color(0xFF6C63FF);
+      case 'vitality': return const Color(0xFF00D2D3);
+      case 'spirit': return const Color(0xFFFFD700);
+      default: return const Color(0xFF54A0FF);
     }
   }
 
@@ -386,7 +485,6 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
     final theme = ThemeManager();
     final accent = _getCategoryColor(widget.task.category);
 
-    // Keep Dismissible (Swipe to delete) BUT also add a button
     return Dismissible(
       key: ValueKey(widget.task.id),
       direction: DismissDirection.endToStart,
@@ -407,7 +505,6 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
             ),
             child: Row(
               children: [
-                // 1. CHECKBOX
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   padding: const EdgeInsets.all(10),
@@ -415,8 +512,6 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
                   child: widget.task.isCompleted ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : Icon(Icons.circle_outlined, color: accent, size: 20),
                 ),
                 const SizedBox(width: 14),
-
-                // 2. TEXT (Title + Category)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,22 +522,12 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
                     ],
                   ),
                 ),
-
-                // 3. XP REWARD
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: theme.bgColor, borderRadius: BorderRadius.circular(8)),
                   child: Text("+${widget.task.xpReward} XP", style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
-
-                const SizedBox(width: 8),
-
-                // 4. NEW: VISIBLE DELETE BUTTON
-                IconButton(
-                  onPressed: widget.onDelete,
-                  icon: Icon(Icons.delete_forever_rounded, color: theme.subText.withOpacity(0.3), size: 20),
-                  visualDensity: VisualDensity.compact,
-                ),
+                IconButton(onPressed: widget.onDelete, icon: Icon(Icons.delete_forever_rounded, color: theme.subText.withOpacity(0.3), size: 20), visualDensity: VisualDensity.compact),
               ],
             ),
           ),

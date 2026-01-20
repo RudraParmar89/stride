@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:io'; // Required for File access
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,16 +10,17 @@ import 'package:barcode_widget/barcode_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart'; // Required for Gallery
+import 'package:image_picker/image_picker.dart';
 
 // Theme & Controllers
 import '../../theme/theme_manager.dart';
 import '../../controllers/xp_controller.dart';
+import '../../controllers/task_controller.dart';
 
 // Services
 import '../../services/notification_service.dart';
 
-// --- DATA MODEL ---
+// --- DATA MODEL: COUPON ---
 class Coupon {
   final String brandName;
   final String category;
@@ -37,6 +38,23 @@ class Coupon {
     required this.accentColor,
     required this.code,
     required this.imagePath,
+  });
+}
+
+// --- NEW DATA MODEL: ACHIEVEMENT ---
+class Achievement {
+  final String id;
+  final String title;
+  final String description;
+  final String imagePath;
+  final bool isUnlocked; // Controls B&W vs Color
+
+  Achievement({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.imagePath,
+    this.isUnlocked = false,
   });
 }
 
@@ -58,16 +76,32 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   int _totalQuests = 0;
 
   // --- AVATAR STATE ---
-  // Default to the new profile folder
   String _selectedAvatar = 'assets/profile/astra_happy.png';
 
-  // Only Facial Expressions (No icons)
   final List<String> _avatarOptions = [
     'assets/profile/astra_happy.png',
     'assets/profile/astra_focused.png',
     'assets/profile/astra_sad.png',
     'assets/profile/astra_angry.png',
     'assets/profile/astra_sleepy.png',
+  ];
+
+  // --- ACHIEVEMENT LIST (Based on your Screenshot) ---
+  // Note: Set 'isUnlocked' to logic based on stats in a real scenario.
+  // For now, some are true and some false to show the effect.
+  final List<Achievement> _achievements = [
+    Achievement(id: '1', title: "Early Riser", description: "Complete a task before 7 AM", imagePath: "assets/badges/Early Riser.png", isUnlocked: true),
+    Achievement(id: '2', title: "Midnight Scholar", description: "Complete a task after 11 PM", imagePath: "assets/badges/Midnight Scholar.png", isUnlocked: true),
+    Achievement(id: '3', title: "Inner Balance", description: "Complete 5 Spirit tasks", imagePath: "assets/badges/Inner Balance.png", isUnlocked: false),
+    Achievement(id: '4', title: "Syllabus Slayer", description: "Finish 10 Intellect tasks", imagePath: "assets/badges/Syllabus Slayer.png", isUnlocked: true),
+    Achievement(id: '5', title: "Twilight Thinker", description: "Active during sunset hours", imagePath: "assets/badges/Twilight Thinker.png", isUnlocked: false),
+    Achievement(id: '6', title: "Internally Driven", description: "Maintain a 7-day streak", imagePath: "assets/badges/Internally Driven.png", isUnlocked: true),
+    Achievement(id: '7', title: "Ascendant", description: "Reach Level 10", imagePath: "assets/badges/Ascendant.png", isUnlocked: false),
+    Achievement(id: '8', title: "Back on Track", description: "Recover a lost streak", imagePath: "assets/badges/Back on Track.png", isUnlocked: true),
+    Achievement(id: '9', title: "A Long Way", description: "Total 10,000 XP earned", imagePath: "assets/badges/A Long Way.png", isUnlocked: false),
+    Achievement(id: '10', title: "Still Here", description: "Active for 30 days", imagePath: "assets/badges/Still Here.png", isUnlocked: false),
+    Achievement(id: '11', title: "Breakthrough", description: "Complete a high difficulty quest", imagePath: "assets/badges/Breakthrough.png", isUnlocked: true),
+    Achievement(id: '12', title: "Out of Orbit", description: "Complete 100 total tasks", imagePath: "assets/badges/Out of Orbit.png", isUnlocked: false),
   ];
 
   final User? user = FirebaseAuth.instance.currentUser;
@@ -91,7 +125,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
       var settingsBox = Hive.box('settingsBox');
       if (mounted) {
         setState(() {
-          // Load saved path, or default to happy Astra in profile folder
           _selectedAvatar = settingsBox.get('userAvatar', defaultValue: 'assets/profile/astra_happy.png');
         });
       }
@@ -137,19 +170,15 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     });
   }
 
-  // --- SMART IMAGE LOADER ---
   ImageProvider _getAvatarProvider(String path) {
     if (path.startsWith('assets/')) {
-      // It's a built-in asset
       return AssetImage(path);
     } else if (path.isNotEmpty) {
-      // It's a file from the device
       File file = File(path);
       if (file.existsSync()) {
         return FileImage(file);
       }
     }
-    // Fallback if file was deleted or path is invalid
     return const AssetImage('assets/profile/astra_happy.png');
   }
 
@@ -159,12 +188,10 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         setState(() => _selectedAvatar = image.path);
-        // Save absolute path to Hive
         Hive.box('settingsBox').put('userAvatar', image.path);
-
         if (mounted) {
-          Navigator.pop(context); // Close the sheet
-          _triggerGlitch(); // Effect
+          Navigator.pop(context);
+          _triggerGlitch();
         }
       }
     } catch (e) {
@@ -204,7 +231,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             Text("IDENTITY MODIFICATION", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
             const SizedBox(height: 30),
 
-            // Custom Upload Button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -221,7 +247,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
 
             const SizedBox(height: 20),
 
-            // Grid of Presets
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -297,7 +322,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                   ),
                   const SizedBox(height: 30),
 
-                  // Visual Interface
                   Container(
                     decoration: BoxDecoration(color: theme.bgColor, borderRadius: BorderRadius.circular(16)),
                     child: SwitchListTile(
@@ -320,11 +344,11 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildColorDot(theme, const Color(0xFF00D2D3)), // Cyan
-                      _buildColorDot(theme, const Color(0xFF00FF41)), // Matrix Green
-                      _buildColorDot(theme, const Color(0xFFFFD700)), // Gold
-                      _buildColorDot(theme, const Color(0xFFFF5252)), // Red
-                      _buildColorDot(theme, const Color(0xFF6C63FF)), // Purple
+                      _buildColorDot(theme, const Color(0xFF00D2D3)),
+                      _buildColorDot(theme, const Color(0xFF00FF41)),
+                      _buildColorDot(theme, const Color(0xFFFFD700)),
+                      _buildColorDot(theme, const Color(0xFFFF5252)),
+                      _buildColorDot(theme, const Color(0xFF6C63FF)),
                     ],
                   ),
 
@@ -654,6 +678,119 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     );
   }
 
+  // --- NEW: ACHIEVEMENT GRID SLIDE ---
+  void _showAchievements(ThemeManager theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)],
+        ),
+        child: Column(
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.subText.withOpacity(0.3), borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Icon(Icons.military_tech_rounded, color: theme.accentColor),
+                const SizedBox(width: 12),
+                Text("SERVICE RECORD", style: TextStyle(color: theme.textColor, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 20,
+                  childAspectRatio: 0.8,
+                ),
+                itemCount: _achievements.length,
+                itemBuilder: (context, index) {
+                  final Achievement badge = _achievements[index];
+
+                  return GestureDetector(
+                    onTap: () {
+                      // Show details on tap
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: theme.cardColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: theme.accentColor.withOpacity(0.5))),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              badge.isUnlocked
+                                  ? Image.asset(badge.imagePath, width: 80, height: 80)
+                                  : ColorFiltered(
+                                colorFilter: const ColorFilter.matrix(<double>[
+                                  0.2126, 0.7152, 0.0722, 0, 0,
+                                  0.2126, 0.7152, 0.0722, 0, 0,
+                                  0.2126, 0.7152, 0.0722, 0, 0,
+                                  0,      0,      0,      1, 0,
+                                ]),
+                                child: Image.asset(badge.imagePath, width: 80, height: 80),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(badge.title, style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 18), textAlign: TextAlign.center),
+                              const SizedBox(height: 8),
+                              Text(badge.description, style: TextStyle(color: theme.subText, fontSize: 12), textAlign: TextAlign.center),
+                              const SizedBox(height: 16),
+                              Text(badge.isUnlocked ? "STATUS: UNLOCKED" : "STATUS: LOCKED", style: TextStyle(color: badge.isUnlocked ? theme.accentColor : Colors.grey, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.5)),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: badge.isUnlocked ? [BoxShadow(color: theme.accentColor.withOpacity(0.3), blurRadius: 10)] : [],
+                            ),
+                            child: badge.isUnlocked
+                                ? Image.asset(badge.imagePath, fit: BoxFit.contain)
+                                : ColorFiltered(
+                              colorFilter: const ColorFilter.matrix(<double>[
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0,      0,      0,      1, 0,
+                              ]),
+                              child: Opacity(opacity: 0.5, child: Image.asset(badge.imagePath, fit: BoxFit.contain)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          badge.title,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: badge.isUnlocked ? theme.textColor : theme.subText, fontSize: 10, fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // =========================================================
   //  ACTION METHODS (REQUIRED)
   // =========================================================
@@ -722,6 +859,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     );
   }
 
+  // --- CRITICAL FIX: UPDATED LOGOUT LOGIC ---
   void _showLogoutWarning(ThemeManager theme) {
     HapticFeedback.heavyImpact();
     showDialog(
@@ -730,8 +868,26 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         backgroundColor: theme.cardColor,
         shape: RoundedRectangleBorder(side: BorderSide(color: Colors.redAccent.withOpacity(0.5)), borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.redAccent), SizedBox(width: 12), Text("WARNING", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))]),
-        content: Text("ABORTING SESSION WILL DISCONNECT NEURAL LINK.", style: TextStyle(color: theme.subText, fontSize: 13)),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCEL", style: TextStyle(color: theme.subText))), TextButton(onPressed: () {Navigator.pop(context); FirebaseAuth.instance.signOut(); }, child: const Text("ABORT", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)))],
+        content: Text("ABORTING SESSION WILL WIPE LOCAL DATA AND DISCONNECT NEURAL LINK.", style: TextStyle(color: theme.subText, fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCEL", style: TextStyle(color: theme.subText))),
+          TextButton(
+            onPressed: () async {
+              // 1. Get Controller
+              final taskController = Provider.of<TaskController>(context, listen: false);
+
+              // 2. Wipe Local Data
+              await taskController.resetAllData();
+
+              // 3. Close Dialog
+              if (context.mounted) Navigator.pop(context);
+
+              // 4. Sign Out of Firebase
+              await FirebaseAuth.instance.signOut();
+            },
+            child: const Text("ABORT", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          )
+        ],
       ),
     );
   }
@@ -1006,6 +1162,15 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                           "Visual & Neural Frequency",
                           isHighlighted: true,
                           onTap: () => _showThemeSettings(theme)
+                      ),
+
+                      // --- NEW: ACHIEVEMENT TILE ---
+                      _buildSystemTile(
+                          theme,
+                          Icons.military_tech_rounded,
+                          "Achievements",
+                          "Service Record & Badges",
+                          onTap: () => _showAchievements(theme)
                       ),
 
                       // 2. NOTIFICATIONS (Opened via Tap)
