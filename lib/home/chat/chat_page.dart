@@ -20,9 +20,8 @@ class _ChatPageState extends State<ChatPage> {
   final List<Map<String, String>> _messages = [];
   bool _isTyping = false;
 
-  // --- API CONFIGURATION ---
-  // ⚠️ SECURITY WARNING: Never commit this key to GitHub or share it publicly.
-  static const String _apiKey = 'AIzaSyDvyFTQ3klIcu1ZANRjwhzlrAUzdB9oMUg';
+  // ⚠️ YOUR API KEY
+
 
   late final GenerativeModel _model;
   late final ChatSession _chatSession;
@@ -31,18 +30,21 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initModel();
+    // Default greeting when chat opens
     _addSystemMessage("Astra Systems Online. Syncing complete. How can I assist?");
   }
 
   void _initModel() {
+    // ✅ USING THE FASTEST & SMARTEST MODEL FOR YOU
     _model = GenerativeModel(
-      model: 'gemini-pro',
+      model: 'gemini-2.0-flash',
       apiKey: _apiKey,
     );
     _chatSession = _model.startChat();
   }
 
   void _addSystemMessage(String text) {
+    if (!mounted) return;
     setState(() {
       _messages.add({"sender": "astra", "text": text});
     });
@@ -62,7 +64,6 @@ class _ChatPageState extends State<ChatPage> {
     _generateOmniscientResponse(text);
   }
 
-  // --- THE OMNISCIENT BRAIN ---
   Future<void> _generateOmniscientResponse(String userQuery) async {
     try {
       // 1. DATA AGGREGATION (Gathering "Everything")
@@ -70,7 +71,6 @@ class _ChatPageState extends State<ChatPage> {
       final xpController = Provider.of<XpController>(context, listen: false);
       final user = FirebaseAuth.instance.currentUser;
 
-      // A. User Details
       final String name = user?.displayName ?? "Commander";
       final String email = user?.email ?? "Unknown";
 
@@ -90,11 +90,6 @@ class _ChatPageState extends State<ChatPage> {
       - Embers (Currency): ${xpController.embers}
       """;
 
-      // D. Focus Timer & Calendar (Placeholders)
-      bool isFocusActive = false;
-      String focusTimeRemaining = "00:00";
-      String calendarEvents = "No external calendar events synced.";
-
       // 2. CONSTRUCT THE SYSTEM PROMPT
       String systemContext = """
       You are Astra, a tactical AI interface for the Stride productivity app.
@@ -103,7 +98,6 @@ class _ChatPageState extends State<ChatPage> {
       1. You have FULL ACCESS to the user's data below.
       2. Be PRECISE and CONCISE. Do not ramble.
       3. Answer ONLY what is asked based on the data.
-      4. If the user asks about "Missions", "Tasks", "Stats", "Focus", or "Calendar", use the provided data.
       
       --- LIVE DATA FEED ---
       USER: $name ($email)
@@ -111,23 +105,15 @@ class _ChatPageState extends State<ChatPage> {
       ANALYSIS:
       $analysis
       
-      FOCUS TIMER STATUS:
-      - Active: $isFocusActive
-      - Time Remaining: $focusTimeRemaining
-      
-      CALENDAR / MISSIONS LOG:
+      MISSIONS LOG:
       $allTasks
-      $calendarEvents
       ----------------------
       
       USER QUERY: $userQuery
       """;
 
       // 3. SEND TO AI
-      final response = await _chatSession.sendMessage(
-          Content.text(systemContext)
-      );
-
+      final response = await _chatSession.sendMessage(Content.text(systemContext));
       final responseText = response.text ?? "Data packet lost. Please retry.";
 
       if (mounted) {
@@ -142,7 +128,8 @@ class _ChatPageState extends State<ChatPage> {
       if (mounted) {
         setState(() {
           _isTyping = false;
-          _messages.add({"sender": "astra", "text": "Connection failure. Offline protocols active."});
+          // Shows real error if something breaks (e.g. internet lost)
+          _messages.add({"sender": "astra", "text": "SYSTEM ERROR: $e"});
         });
         _scrollToBottom();
       }
@@ -222,8 +209,6 @@ class _ChatPageState extends State<ChatPage> {
       },
     );
   }
-
-  // --- UI WIDGETS ---
 
   Widget _buildMessageBubble(ThemeManager theme, String text, bool isUser) {
     return Align(
