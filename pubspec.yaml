@@ -42,7 +42,7 @@ dependencies:
   # ================= PRINTING & FILES =================
   pdf: ^3.10.0
   printing: ^5.11.0
-  path_provider: ^2.0.0
+  path_provider: ^2.1.5
 
   # ================= MAPS & LOCATION (Strava Feature) =================
   geolocator: ^14.0.2              # GPS Coordinates
@@ -68,6 +68,8 @@ dependencies:
 
   # ================= AI CHATBOT =================
   google_generative_ai: ^0.4.3
+  share_plus: ^12.0.1
+  screenshot: ^3.0.0
 
 dev_dependencies:
   flutter_test:

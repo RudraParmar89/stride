@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../theme/theme_manager.dart';
 import '../../../../controllers/task_controller.dart';
-// ✅ FIXED IMPORT: Points to the correct folder shown in your screenshot
+// ✅ IMPORT: Points to your feature folder
 import 'package:stride/features/active_session/run_tracker_page.dart';
 import 'quest_tile.dart';
 
@@ -17,23 +17,23 @@ class DailyQuestSection extends StatelessWidget {
     required this.onQuestDelete,
   });
 
-  // --- 🏃‍♂️ NEW LOGIC: Intercept Taps for Cardio ---
+  // --- 🏃‍♂️ LOGIC: Intercept Taps ---
   void _handleTaskTap(BuildContext context, Task task) {
-    // 1. Check if the task is cardio-related (Run, Walk, Jog)
+    // 1. Check if the task is cardio-related
     bool isCardio = task.title.toLowerCase().contains("run") ||
         task.title.toLowerCase().contains("walk") ||
         task.title.toLowerCase().contains("jog");
 
-    // 2. If it is Cardio and NOT done yet, show the tracker options
+    // 2. If Cardio & Not Done -> FORCE TRACKER
     if (isCardio && !task.isCompleted) {
       _showTrackerOptions(context, task);
     } else {
-      // 3. Otherwise, just check it off normally
+      // 3. Normal Task -> Toggle normally
       onQuestToggle(task.id);
     }
   }
 
-  // --- 📱 NEW UI: Bottom Sheet for Tracker ---
+  // --- 📱 UI: Tracker Prompt (No "Mark Done" Option) ---
   void _showTrackerOptions(BuildContext context, Task task) {
     showModalBottomSheet(
       context: context,
@@ -49,17 +49,17 @@ class DailyQuestSection extends StatelessWidget {
           children: [
             const Icon(Icons.directions_run_rounded, size: 50, color: Colors.orangeAccent),
             const SizedBox(height: 10),
-            Text("Ready to Move?", style: TextStyle(color: ThemeManager().textColor, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text("Time to Move", style: TextStyle(color: ThemeManager().textColor, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            Text("Track your '${task.title}' with GPS for accurate stats like Strava.", textAlign: TextAlign.center, style: TextStyle(color: ThemeManager().subText)),
+            Text("This is a tracked event. GPS is required to complete '${task.title}'.", textAlign: TextAlign.center, style: TextStyle(color: ThemeManager().subText)),
             const SizedBox(height: 25),
 
-            // BUTTON: START GPS TRACKER
+            // BUTTON: START GPS TRACKER (The Only Way Forward)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.gps_fixed_rounded),
-                label: const Text("Start GPS Tracker"),
+                label: const Text("Start Session"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orangeAccent,
                   foregroundColor: Colors.white,
@@ -74,7 +74,7 @@ class DailyQuestSection extends StatelessWidget {
                     context,
                     MaterialPageRoute(builder: (context) => RunTrackerPage(taskName: task.title)),
                   ).then((result) {
-                    // If they finished the run (result == true), mark task as done
+                    // Only mark done if they actually finished the run logic
                     if (result == true) {
                       onQuestToggle(task.id);
                     }
@@ -84,14 +84,7 @@ class DailyQuestSection extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // BUTTON: JUST MARK DONE
-            TextButton(
-              child: Text("Just Mark Done (No GPS)", style: TextStyle(color: ThemeManager().subText)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                onQuestToggle(task.id);
-              },
-            ),
+            // ❌ "Just Mark Done" button has been REMOVED.
           ],
         ),
       ),
@@ -175,7 +168,7 @@ class DailyQuestSection extends StatelessWidget {
                   child: QuestTile(
                     task: task,
                     index: index,
-                    // ✅ MODIFIED: Use _handleTaskTap to check for "Run" tasks first
+                    // ✅ MODIFIED: Use _handleTaskTap to intercept taps
                     onTap: () => _handleTaskTap(context, task),
                     onDelete: () => onQuestDelete(task.id),
                   ),

@@ -1,14 +1,20 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart'; // The Map
-import 'package:latlong2/latlong.dart';      // Coordinates
-import 'package:geolocator/geolocator.dart'; // GPS
-import 'package:pedometer/pedometer.dart';   // Steps
+import 'package:flutter_map/flutter_map.dart';
+// ✅ FIXED: We hide 'Path' from this library so it doesn't conflict with Flutter's drawing Path
+import 'package:latlong2/latlong.dart' hide Path;
+import 'package:geolocator/geolocator.dart';
+import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../theme/theme_manager.dart';
 
 class RunTrackerPage extends StatefulWidget {
-  final String taskName; // e.g., "Morning Run"
+  final String taskName;
 
   const RunTrackerPage({super.key, required this.taskName});
 
@@ -17,13 +23,16 @@ class RunTrackerPage extends StatefulWidget {
 }
 
 class _RunTrackerPageState extends State<RunTrackerPage> {
+  final ScreenshotController _screenshotController = ScreenshotController();
+
   // 📍 LOCATION DATA
   List<LatLng> _routePoints = [];
-  MapController _mapController = MapController();
+  final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
-  LocationSettings _locationSettings = const LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 5, // Update every 5 meters
+
+  final LocationSettings _locationSettings = const LocationSettings(
+    accuracy: LocationAccuracy.bestForNavigation,
+    distanceFilter: 2,
   );
 
   // 👣 STEP DATA
@@ -36,7 +45,7 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
   Duration _duration = Duration.zero;
   double _totalDistanceKm = 0.0;
   double _caloriesBurned = 0.0;
-  String _currentPace = "0'00\""; // min/km
+  String _currentPace = "0'00\"";
 
   bool _isPaused = false;
   bool _isLoading = true;
@@ -48,21 +57,18 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
   }
 
   Future<void> _checkPermissionsAndStart() async {
-    // 1. Request Permissions
     await [
       Permission.location,
       Permission.activityRecognition,
+      Permission.storage,
     ].request();
 
-    // 2. Start Services
     _startTimer();
     _startLocationTracking();
     _startStepTracking();
 
     setState(() => _isLoading = false);
   }
-
-  // --- 🏃‍♂️ TRACKING LOGIC ---
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -83,19 +89,19 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
       LatLng newPoint = LatLng(position.latitude, position.longitude);
 
       setState(() {
-        // Calculate distance added
         if (_routePoints.isNotEmpty) {
           double dist = Geolocator.distanceBetween(
             _routePoints.last.latitude, _routePoints.last.longitude,
             newPoint.latitude, newPoint.longitude,
           );
-          _totalDistanceKm += (dist / 1000); // Convert meters to km
-          _caloriesBurned += (dist * 0.06); // Approx 60 cal per km (rough estimate)
+
+          if (dist > 2.0) {
+            _totalDistanceKm += (dist / 1000);
+            _caloriesBurned += (dist * 0.06);
+          }
         }
 
         _routePoints.add(newPoint);
-
-        // Auto-center map
         _mapController.move(newPoint, 17.0);
       });
     });
@@ -106,12 +112,11 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
       if (_initialSteps == -1) _initialSteps = event.steps;
       setState(() {
         _currentSteps = event.steps - _initialSteps;
-        // Fallback calorie calc if GPS is flaky
         if (_totalDistanceKm == 0) {
           _caloriesBurned = _currentSteps * 0.04;
         }
       });
-    }, onError: (e) => print("Step Error: $e"));
+    }, onError: (e) => debugPrint("Step Error: $e"));
   }
 
   void _updatePace() {
@@ -124,8 +129,98 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
     }
   }
 
-  void _togglePause() {
-    setState(() => _isPaused = !_isPaused);
+  void _togglePause() => setState(() => _isPaused = !_isPaused);
+
+  // 📸 SHARE RUN IMAGE
+  Future<void> _shareRunImage() async {
+    try {
+      final summaryCard = _buildShareSummaryCard();
+
+      final image = await _screenshotController.captureFromWidget(
+        summaryCard,
+        delay: const Duration(milliseconds: 50),
+        context: context,
+      );
+
+      final directory = await getApplicationDocumentsDirectory();
+      final imagePath = await File('${directory.path}/stride_run_share.png').create();
+      await imagePath.writeAsBytes(image);
+
+      await Share.shareXFiles(
+          [XFile(imagePath.path)],
+          text: "Just crushed a ${_totalDistanceKm.toStringAsFixed(2)}km run on Stride! 🏃🔥"
+      );
+    } catch (e) {
+      debugPrint("Share Error: $e");
+    }
+  }
+
+  // 🎨 CUSTOM SUMMARY CARD WIDGET
+  Widget _buildShareSummaryCard() {
+    final theme = ThemeManager();
+    return Container(
+      width: 400,
+      height: 600,
+      color: theme.bgColor,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. ROUTE LAYER
+          if (_routePoints.isNotEmpty)
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.all(50.0),
+                child: CustomPaint(
+                  painter: RoutePainter(routePoints: _routePoints, color: Colors.orangeAccent),
+                ),
+              ),
+            ),
+
+          // 2. STATS LAYER
+          Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 60),
+              _buildShareStat(theme, "DISTANCE", "${_totalDistanceKm.toStringAsFixed(2)} km"),
+              const SizedBox(height: 30),
+              _buildShareStat(theme, "PACE", _currentPace),
+              const SizedBox(height: 30),
+              _buildShareStat(theme, "TIME", _formatDuration(_duration)),
+
+              const Spacer(),
+
+              const Text(
+                "STRIDE",
+                style: TextStyle(
+                  color: Colors.orangeAccent,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.0,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareStat(ThemeManager theme, String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(color: theme.subText, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(color: theme.textColor, fontSize: 50, fontWeight: FontWeight.w900, height: 1.0),
+        ),
+      ],
+    );
   }
 
   void _finishRun() {
@@ -133,30 +228,39 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
     _positionStream?.cancel();
     _stepStream?.cancel();
 
-    // Show Summary Dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: ThemeManager().cardColor,
-        title: Text("Run Complete! 🎉", style: TextStyle(color: ThemeManager().textColor)),
+        title: Text("Session Complete", style: TextStyle(color: ThemeManager().textColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Distance: ${_totalDistanceKm.toStringAsFixed(2)} km", style: TextStyle(color: ThemeManager().subText)),
-            Text("Time: ${_formatDuration(_duration)}", style: TextStyle(color: ThemeManager().subText)),
-            Text("Steps: $_currentSteps", style: TextStyle(color: ThemeManager().subText)),
             Text("Calories: ${_caloriesBurned.toStringAsFixed(0)} kcal", style: TextStyle(color: ThemeManager().subText)),
+            const SizedBox(height: 20),
+
+            ElevatedButton.icon(
+              icon: const Icon(Icons.share_rounded, color: Colors.white),
+              label: const Text("Share Stats"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orangeAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                _shareRunImage();
+              },
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); // Close Dialog
-              Navigator.pop(context, true); // Close Page & Return Success
+              Navigator.pop(ctx);
+              Navigator.pop(context, true);
             },
-            child: const Text("Save & Exit", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+            child: const Text("Close", style: TextStyle(color: Colors.grey)),
           )
         ],
       ),
@@ -179,151 +283,155 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = ThemeManager();
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: Stack(
-        children: [
-          // 🗺️ 1. MAP LAYER (Full Screen)
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(0, 0), // Will update on load
-              initialZoom: 15.0,
-            ),
-            children: [
-              TileLayer(
-                // Using OpenStreetMap (Free, no API key needed)
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.stride',
+
+    return Screenshot(
+      controller: _screenshotController,
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: Stack(
+          children: [
+            // 🗺️ MAP
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(0, 0),
+                initialZoom: 15.0,
               ),
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _routePoints,
-                    strokeWidth: 5.0,
-                    color: Colors.orangeAccent, // Strava Orange!
-                  ),
-                ],
-              ),
-              // Current Position Marker
-              if (_routePoints.isNotEmpty)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _routePoints.last,
-                      width: 20, height: 20,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
-                        ),
-                      ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.stride',
+                ),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 6.0,
+                      color: Colors.orangeAccent,
                     ),
                   ],
                 ),
-            ],
-          ),
-
-          // 📊 2. TOP OVERLAY (Time & Pace)
-          Positioned(
-            top: 50, left: 20, right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildGlassMetric(theme, "TIME", _formatDuration(_duration), fontSize: 24),
-                _buildGlassMetric(theme, "PACE", _currentPace, fontSize: 24),
+                if (_routePoints.isNotEmpty)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _routePoints.last,
+                        width: 25, height: 25,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 8)],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
-          ),
 
-          // 👟 3. BOTTOM STATS CARD (Strava Style)
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+            // ⚡ TOP STATS
+            Positioned(
+              top: 50, left: 20, right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Main Stat (Distance)
-                  Text(
-                    "${_totalDistanceKm.toStringAsFixed(2)}",
-                    style: TextStyle(color: theme.textColor, fontSize: 60, fontWeight: FontWeight.bold, height: 1),
-                  ),
-                  Text("KILOMETERS", style: TextStyle(color: theme.subText, fontSize: 12, letterSpacing: 1.5)),
-
-                  const SizedBox(height: 20),
-
-                  // Secondary Stats Grid
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSimpleStat(theme, Icons.local_fire_department_rounded, "${_caloriesBurned.toInt()}", "KCAL"),
-                      _buildSimpleStat(theme, Icons.directions_walk_rounded, "$_currentSteps", "STEPS"),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Pause/Resume Button
-                      FloatingActionButton(
-                        heroTag: "pause",
-                        backgroundColor: _isPaused ? Colors.green : Colors.orange,
-                        onPressed: _togglePause,
-                        child: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 30),
-                      ),
-                      const SizedBox(width: 20),
-                      // Finish Button
-                      FloatingActionButton(
-                        heroTag: "stop",
-                        backgroundColor: theme.accentColor,
-                        onPressed: _finishRun,
-                        child: const Icon(Icons.stop_rounded, size: 30),
-                      ),
-                    ],
-                  ),
+                  _buildGlassMetric("TIME", _formatDuration(_duration)),
+                  _buildGlassMetric("PACE", _currentPace),
                 ],
               ),
             ),
-          ),
 
-          // 🔙 Back Button
-          Positioned(
-            top: 40, left: 10,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87), // Map is light, use dark icon
-              onPressed: () => Navigator.pop(context),
+            // 👟 BOTTOM CARD
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, offset: const Offset(0, -5))],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _totalDistanceKm.toStringAsFixed(2),
+                      style: TextStyle(color: theme.textColor, fontSize: 64, fontWeight: FontWeight.w900, height: 1),
+                    ),
+                    Text("KILOMETERS", style: TextStyle(color: theme.subText, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
+
+                    const SizedBox(height: 25),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildSimpleStat(theme, Icons.local_fire_department_rounded, "${_caloriesBurned.toInt()}", "KCAL"),
+                        Container(height: 30, width: 1, color: Colors.grey.withOpacity(0.3)),
+                        _buildSimpleStat(theme, Icons.directions_walk_rounded, "$_currentSteps", "STEPS"),
+                      ],
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FloatingActionButton(
+                          heroTag: "pause",
+                          backgroundColor: _isPaused ? Colors.green : Colors.orangeAccent,
+                          elevation: 4,
+                          onPressed: _togglePause,
+                          child: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 32, color: Colors.white),
+                        ),
+                        const SizedBox(width: 25),
+                        FloatingActionButton(
+                          heroTag: "stop",
+                          backgroundColor: theme.textColor,
+                          elevation: 4,
+                          onPressed: _finishRun,
+                          child: const Icon(Icons.stop_rounded, size: 32, color: Colors.redAccent),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
 
-          if (_isLoading)
-            Container(color: Colors.black54, child: const Center(child: CircularProgressIndicator())),
-        ],
+            // 🔙 BACK BUTTON
+            Positioned(
+              top: 40, left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+
+            if (_isLoading)
+              Container(
+                color: Colors.black54,
+                child: const Center(child: CircularProgressIndicator(color: Colors.orangeAccent)),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGlassMetric(ThemeManager theme, String label, String value, {double fontSize = 18}) {
+  Widget _buildGlassMetric(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6), // Glass effect
+        color: Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.w700)),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -332,11 +440,69 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
   Widget _buildSimpleStat(ThemeManager theme, IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: theme.accentColor, size: 24),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: theme.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(color: theme.subText, fontSize: 10)),
+        Icon(icon, color: Colors.orangeAccent, size: 26),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(color: theme.textColor, fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: theme.subText, fontSize: 10, fontWeight: FontWeight.bold)),
       ],
     );
   }
+}
+
+// 🖌️ CUSTOM PAINTER
+class RoutePainter extends CustomPainter {
+  final List<LatLng> routePoints;
+  final Color color;
+
+  RoutePainter({required this.routePoints, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (routePoints.isEmpty) return;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    double minLat = routePoints.first.latitude;
+    double maxLat = routePoints.first.latitude;
+    double minLon = routePoints.first.longitude;
+    double maxLon = routePoints.first.longitude;
+
+    for (var point in routePoints) {
+      minLat = math.min(minLat, point.latitude);
+      maxLat = math.max(maxLat, point.latitude);
+      minLon = math.min(minLon, point.longitude);
+      maxLon = math.max(maxLon, point.longitude);
+    }
+
+    final latSpan = maxLat - minLat;
+    final lonSpan = maxLon - minLon;
+
+    if (latSpan == 0 || lonSpan == 0) return;
+
+    // ✅ FIXED: Now using Flutter's native Path class because we hid the other one
+    final path = Path();
+
+    Offset normalize(LatLng point) {
+      final x = (point.longitude - minLon) / lonSpan * size.width;
+      final y = (maxLat - point.latitude) / latSpan * size.height;
+      return Offset(x, y);
+    }
+
+    path.moveTo(normalize(routePoints.first).dx, normalize(routePoints.first).dy);
+
+    for (int i = 1; i < routePoints.length; i++) {
+      final offset = normalize(routePoints[i]);
+      path.lineTo(offset.dx, offset.dy);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
