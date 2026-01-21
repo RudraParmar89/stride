@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For Clipboard
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
 import '../../theme/theme_manager.dart';
 import '../../controllers/task_controller.dart';
 import '../../controllers/xp_controller.dart';
@@ -17,11 +21,18 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> _messages = [];
-  bool _isTyping = false;
 
-  // ⚠️ YOUR API KEY
+  // 📦 HIVE: Local Database for Chat History
+  late Box _chatBox;
+  List<Map<String, dynamic>> _messages = [];
 
+  // 🎤 VOICE: Speech Recognition
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _isTyping = false; // Controls the "Astra is typing..." animation
+
+  // ⚠️ YOUR KEY GOES HERE. (This is the only part I cannot do for you)
+  static const String _apiKey = 'AIzaSyDt10th9Hf2U3ocBoaMPKXBhsPHlPORY-o';
 
   late final GenerativeModel _model;
   late final ChatSession _chatSession;
@@ -29,109 +40,170 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _initHive();
+    _initVoice();
     _initModel();
-    // Default greeting when chat opens
-    _addSystemMessage("Astra Systems Online. Syncing complete. How can I assist?");
   }
 
+  // --- 1. SETUP DATABASE ---
+  Future<void> _initHive() async {
+    _chatBox = await Hive.openBox('chatHistory');
+    if (_chatBox.isNotEmpty) {
+      setState(() {
+        _messages = List<Map<String, dynamic>>.from(
+            _chatBox.values.map((e) => Map<String, dynamic>.from(e))
+        );
+      });
+      // Scroll to bottom slightly after load
+      Future.delayed(const Duration(milliseconds: 200), _scrollToBottom);
+    } else {
+      _saveMessage("astra", "Astra Systems Online. Syncing complete. How can I assist?");
+    }
+  }
+
+  // --- 2. SETUP VOICE ---
+  void _initVoice() {
+    _speech = stt.SpeechToText();
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onError: (val) => debugPrint('Voice Error: $val'),
+        onStatus: (val) => debugPrint('Voice Status: $val'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(onResult: (val) {
+          setState(() {
+            _controller.text = val.recognizedWords;
+          });
+        });
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  // --- 3. SETUP GEMINI (The Brain) ---
   void _initModel() {
-    // ✅ USING THE FASTEST & SMARTEST MODEL FOR YOU
+    // 'gemini-1.5-flash' is the fastest, free-tier friendly model.
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-flash-latest',
       apiKey: _apiKey,
     );
     _chatSession = _model.startChat();
   }
 
-  void _addSystemMessage(String text) {
-    if (!mounted) return;
+  // --- HELPER: SAVE & SHOW MESSAGE ---
+  void _saveMessage(String sender, String text) {
+    final msg = {"sender": sender, "text": text, "time": DateTime.now().toIso8601String()};
     setState(() {
-      _messages.add({"sender": "astra", "text": text});
+      _messages.add(msg);
     });
+    // Save to local storage so it remembers next time
+    if (_chatBox.isOpen) _chatBox.add(msg);
     _scrollToBottom();
   }
 
   void _handleSubmitted(String text) {
     if (text.trim().isEmpty) return;
-
     _controller.clear();
-    setState(() {
-      _messages.add({"sender": "user", "text": text});
-      _isTyping = true;
-    });
-    _scrollToBottom();
+    _saveMessage("user", text);
 
-    _generateOmniscientResponse(text);
+    // Check if user wants to create a task, otherwise chat
+    _checkForTaskIntent(text);
   }
 
-  Future<void> _generateOmniscientResponse(String userQuery) async {
+  // --- 4. SMART TASK CREATION ---
+  void _checkForTaskIntent(String text) {
+    final lower = text.toLowerCase();
+
+    // Detect commands like "Remind me to..."
+    if (lower.startsWith("remind me to ") || lower.startsWith("add task ")) {
+      String taskTitle = text.replaceAll(RegExp(r'(?i)(remind me to |add task )'), "");
+
+      if (taskTitle.isNotEmpty) {
+        final taskController = Provider.of<TaskController>(context, listen: false);
+        taskController.addTask(taskTitle, category: "General");
+
+        _saveMessage("astra", "✅ Directive confirmed. Created task: \"$taskTitle\"");
+        return;
+      }
+    }
+    // If not a command, generate AI response
+    _generateStreamingResponse(text);
+  }
+
+  // --- 5. STREAMING RESPONSE (THE "QUICK FEELING") ---
+  Future<void> _generateStreamingResponse(String userQuery) async {
     try {
-      // 1. DATA AGGREGATION (Gathering "Everything")
+      setState(() => _isTyping = true);
+
       final taskController = Provider.of<TaskController>(context, listen: false);
       final xpController = Provider.of<XpController>(context, listen: false);
       final user = FirebaseAuth.instance.currentUser;
+      final String name = user?.displayName ?? "Hunter";
 
-      final String name = user?.displayName ?? "Commander";
-      final String email = user?.email ?? "Unknown";
-
-      // B. Missions (Defined & User Created)
+      // Gather live data
       String allTasks = taskController.tasks.isEmpty
-          ? "No missions active."
-          : taskController.tasks.map((t) {
-        String status = t.isCompleted ? "[COMPLETED]" : "[PENDING]";
-        return "$status ${t.title} (Class: ${t.category}, Reward: ${t.xpReward} XP)";
-      }).join("\n");
+          ? "No active missions."
+          : taskController.tasks.map((t) => "- ${t.title} (${t.category})").join("\n");
+      String analysis = "Level ${xpController.level}, ${xpController.embers} Embers.";
 
-      // C. Analysis & Stats
-      String analysis = """
-      - Level: ${xpController.level}
-      - Current XP: ${xpController.currentXp}
-      - Rank: ${xpController.getRankName()}
-      - Embers (Currency): ${xpController.embers}
-      """;
-
-      // 2. CONSTRUCT THE SYSTEM PROMPT
+      // 🔥 PERSONALITY PROTOCOL
       String systemContext = """
-      You are Astra, a tactical AI interface for the Stride productivity app.
+      You are Astra, a tactical AI companion.
+      USER: $name. STATS: $analysis.
+      MISSIONS: $allTasks
       
-      INSTRUCTIONS:
-      1. You have FULL ACCESS to the user's data below.
-      2. Be PRECISE and CONCISE. Do not ramble.
-      3. Answer ONLY what is asked based on the data.
+      PROTOCOL:
+      1. Be helpful, witty, and concise. 
+      2. If chatting ("hi", "how are you"), be friendly and human-like.
+      3. If asked about data, be precise.
       
-      --- LIVE DATA FEED ---
-      USER: $name ($email)
-      
-      ANALYSIS:
-      $analysis
-      
-      MISSIONS LOG:
-      $allTasks
-      ----------------------
-      
-      USER QUERY: $userQuery
+      QUERY: $userQuery
       """;
 
-      // 3. SEND TO AI
-      final response = await _chatSession.sendMessage(Content.text(systemContext));
-      final responseText = response.text ?? "Data packet lost. Please retry.";
+      // ⚡ STREAMING: Types word-by-word instead of waiting
+      final stream = _chatSession.sendMessageStream(Content.text(systemContext));
 
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add({"sender": "astra", "text": responseText});
-        });
-        _scrollToBottom();
+      String accumulatedText = "";
+      bool isFirstChunk = true;
+
+      await for (final chunk in stream) {
+        if (chunk.text != null) {
+          accumulatedText += chunk.text!;
+
+          if (isFirstChunk) {
+            // Remove "Thinking..." and start the message
+            setState(() {
+              _isTyping = false;
+              _saveMessage("astra", accumulatedText);
+            });
+            isFirstChunk = false;
+          } else {
+            // Update the existing message bubble
+            setState(() {
+              _messages.last['text'] = accumulatedText;
+              // Update storage
+              if (_chatBox.isNotEmpty) {
+                _chatBox.putAt(_chatBox.length - 1, _messages.last);
+              }
+            });
+          }
+          // Auto-scroll
+          if (_scrollController.hasClients && _scrollController.position.atEdge) {
+            _scrollToBottom();
+          }
+        }
       }
 
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isTyping = false;
-          // Shows real error if something breaks (e.g. internet lost)
-          _messages.add({"sender": "astra", "text": "SYSTEM ERROR: $e"});
-        });
-        _scrollToBottom();
+        setState(() => _isTyping = false);
+        _saveMessage("astra", "System Failure: $e");
       }
     }
   }
@@ -146,6 +218,59 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  // --- 6. LONG PRESS MENU (Copy, Edit, Delete) ---
+  void _showOptions(int index, String text, bool isUser) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: ThemeManager().cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy_rounded),
+              title: const Text("Copy Text"),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: text));
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied.")));
+              },
+            ),
+            if (isUser) ListTile(
+              leading: const Icon(Icons.edit_rounded),
+              title: const Text("Edit Message"),
+              onTap: () {
+                Navigator.pop(context);
+                _controller.text = text;
+                // Delete old message so user can "resend" the corrected version
+                setState(() {
+                  _messages.removeAt(index);
+                  _chatBox.deleteAt(index);
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+              title: const Text("Delete Message", style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _messages.removeAt(index);
+                  _chatBox.deleteAt(index);
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -165,40 +290,47 @@ class _ChatPageState extends State<ChatPage> {
             ),
             title: Row(
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: theme.accentColor.withOpacity(0.2),
-                  backgroundImage: const AssetImage('assets/profile/astra_happy.png'),
-                ),
+                CircleAvatar(backgroundImage: const AssetImage('assets/profile/astra_happy.png'), radius: 14),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("ASTRA ONLINE", style: TextStyle(color: theme.textColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                    Row(
-                      children: [
-                        Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
-                        const SizedBox(width: 4),
-                        Text("Systems Synced", style: TextStyle(color: theme.subText, fontSize: 10)),
-                      ],
-                    )
+                    Text("ASTRA ONLINE", style: TextStyle(color: theme.textColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Row(children: [
+                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
+                      const SizedBox(width: 4),
+                      Text("Systems Synced", style: TextStyle(color: theme.subText, fontSize: 10)),
+                    ]),
                   ],
                 ),
               ],
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded),
+                tooltip: "Clear History",
+                onPressed: () {
+                  _chatBox.clear();
+                  setState(() => _messages.clear());
+                },
+              )
+            ],
           ),
           body: Column(
             children: [
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  padding: const EdgeInsets.all(20),
                   itemCount: _messages.length + (_isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _messages.length) return _buildTypingIndicator(theme);
                     final msg = _messages[index];
                     final isUser = msg['sender'] == 'user';
-                    return _buildMessageBubble(theme, msg['text']!, isUser);
+                    return GestureDetector(
+                      onLongPress: () => _showOptions(index, msg['text'], isUser),
+                      child: _buildMessageBubble(theme, msg['text'], isUser),
+                    );
                   },
                 ),
               ),
@@ -226,44 +358,16 @@ class _ChatPageState extends State<ChatPage> {
             bottomRight: isUser ? Radius.zero : const Radius.circular(12),
           ),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isUser ? Colors.white : theme.textColor,
-            fontSize: 13,
-            height: 1.4,
-            fontWeight: isUser ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
+        child: Text(text, style: TextStyle(color: isUser ? Colors.white : theme.textColor, fontSize: 14)),
       ),
     );
   }
 
   Widget _buildTypingIndicator(ThemeManager theme) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12), bottomRight: Radius.circular(12)),
-        ),
-        child: SizedBox(
-          width: 32,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _dot(theme), _dot(theme), _dot(theme),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _dot(ThemeManager theme) {
-    return Container(width: 5, height: 5, decoration: BoxDecoration(color: theme.subText, shape: BoxShape.circle));
+    return Align(alignment: Alignment.centerLeft, child: Padding(
+      padding: const EdgeInsets.only(bottom: 10, left: 10),
+      child: Text("Astra is typing...", style: TextStyle(color: theme.subText, fontSize: 10)),
+    ));
   }
 
   Widget _buildInputArea(ThemeManager theme) {
@@ -272,30 +376,37 @@ class _ChatPageState extends State<ChatPage> {
       color: theme.cardColor,
       child: Row(
         children: [
+          // 🎤 MIC BUTTON
+          GestureDetector(
+            onTap: _listen,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: _isListening ? Colors.redAccent : theme.bgColor,
+                  shape: BoxShape.circle
+              ),
+              child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: theme.textColor, size: 20),
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _controller,
-              style: TextStyle(color: theme.textColor, fontSize: 14),
+              style: TextStyle(color: theme.textColor),
               decoration: InputDecoration(
-                hintText: "Enter directive...",
-                hintStyle: TextStyle(color: theme.subText, fontSize: 13),
-                filled: true,
-                fillColor: theme.bgColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                isDense: true,
+                  hintText: _isListening ? "Listening..." : "Enter directive...",
+                  filled: true,
+                  fillColor: theme.bgColor,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)
               ),
               onSubmitted: _handleSubmitted,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: () => _handleSubmitted(_controller.text),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: theme.accentColor, shape: BoxShape.circle),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-            ),
+            child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: theme.accentColor, shape: BoxShape.circle), child: const Icon(Icons.send_rounded, color: Colors.white, size: 18)),
           ),
         ],
       ),

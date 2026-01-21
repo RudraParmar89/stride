@@ -37,12 +37,19 @@ dependencies:
   # ================= AUDIO & VIBRATION =================
   audioplayers: ^6.1.0
   vibration: ^2.0.0
-  flutter_local_notifications: ^17.2.3
+  flutter_local_notifications: ^18.0.1
 
   # ================= PRINTING & FILES =================
   pdf: ^3.10.0
   printing: ^5.11.0
   path_provider: ^2.0.0
+
+  # ================= MAPS & LOCATION (Strava Feature) =================
+  geolocator: ^14.0.2              # GPS Coordinates
+  flutter_background_service: ^5.1.0 # Tracking while app is closed
+  flutter_map: ^8.2.2              # Free Maps (OpenStreetMap)
+  latlong2: ^0.9.1                 # Coordinate helper
+  sensors_plus: ^7.0.0             # Accelerometer/Gyroscope
 
   # ================= UTILITIES =================
   intl: ^0.20.2
@@ -57,7 +64,8 @@ dependencies:
   permission_handler: ^12.0.1
   awesome_notifications: 0.10.1
   image_picker: ^1.0.7
-  
+  speech_to_text: ^7.0.0
+
   # ================= AI CHATBOT =================
   google_generative_ai: ^0.4.3
 
