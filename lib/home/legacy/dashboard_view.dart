@@ -6,8 +6,8 @@ import '../../controllers/xp_controller.dart';
 import 'dashboard_header.dart';
 import 'dashboard_task_tile.dart';
 
-import '../../widgets/dashboard_action_grid.dart';
-import '../../widgets/daily_goal_card.dart';
+import '../dashboard/widgets/dashboard_action_grid.dart';
+import '../dashboard/widgets/daily_goal_card.dart';
 import '../dashboard/widgets/xp_trend_chip.dart';
 
 class DashboardView extends StatefulWidget {
@@ -85,14 +85,21 @@ class _DashboardViewState extends State<DashboardView>
 
             // ACTION BUTTONS
             DashboardActionGrid(
-              onNewHabit: () {
+              onClockTap: () {
+                // hook later
+              },
+              onCalendarTap: () {
                 // hook later
               },
             ),
             const SizedBox(height: 35),
 
             // DAILY GOAL CARD
-            const DailyGoalCard(),
+            DailyGoalCard(
+              title: "Daily Goal",
+              subtitle: "Complete your tasks",
+              onTap: () {},
+            ),
             const SizedBox(height: 35),
 
             // TASK TITLE
@@ -178,7 +185,7 @@ class _DashboardViewState extends State<DashboardView>
             ),
           ),
           const SizedBox(height: 10),
-          const XpTrendChip(),
+          const XPTrendChip(value: "+10 XP"),
         ],
       ),
     );

@@ -4,7 +4,6 @@ import '../../theme/theme_manager.dart';
 import '../../services/step_tracker_service.dart';
 import '../../controllers/task_controller.dart';
 import '../../controllers/xp_controller.dart';
-
 // Sections
 import 'dashboard/sections/header_section.dart';
 import 'dashboard/sections/progress_section.dart';
@@ -94,9 +93,14 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                     onQuestToggle: (id) {
                       taskController.toggleTask(id);
                       final task = taskController.tasks.firstWhere((t) => t.id == id);
-                      if (task.isCompleted) xpController.addXp(50);
+                      if (task.isCompleted) {
+                        xpController.addXp(task.xpReward, taskCategory: task.category);
+                        if (task.embersReward > 0) {
+                          xpController.addEmbers(task.embersReward);
+                        }
+                      }
                     },
-                    onQuestDelete: (id) => taskController.deleteTask(id), // <--- ADDED THIS
+                    onQuestDelete: (id) => taskController.deleteTask(id),
                   ),
 
                   const SizedBox(height: 16),

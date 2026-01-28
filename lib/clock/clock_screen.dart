@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'package:hive_flutter/hive_flutter.dart'; // ✅ Added for saving data
 
 // Import Theme
 import '../theme/theme_manager.dart';
@@ -36,16 +37,14 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 
         return Scaffold(
           backgroundColor: theme.bgColor,
-
-          // MOVED DOWN: Using SafeArea + Column instead of AppBar
           body: SafeArea(
             bottom: false,
             child: Column(
               children: [
-                // --- SPACER TO PUSH CONTENT DOWN ---
+                // --- SPACER ---
                 const SizedBox(height: 30),
 
-                // --- CUSTOM HEADER ---
+                // --- HEADER ---
                 Center(
                   child: Text(
                     "TEMPORAL SYSTEM",
@@ -60,7 +59,7 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 
                 const SizedBox(height: 20),
 
-                // --- CUSTOM TAB BAR ---
+                // --- TAB BAR ---
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(4),
@@ -71,7 +70,6 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
                   ),
                   child: TabBar(
                     controller: _tabController,
-                    // "Pill" Style Indicator
                     indicator: BoxDecoration(
                       color: theme.accentColor,
                       borderRadius: BorderRadius.circular(21),
@@ -79,8 +77,8 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
                     dividerColor: Colors.transparent,
-                    labelColor: Colors.white, // Text color when selected
-                    unselectedLabelColor: theme.subText, // Text color when unselected
+                    labelColor: Colors.white,
+                    unselectedLabelColor: theme.subText,
                     labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
                     tabs: const [
                       Tab(text: "FOCUS"),
@@ -113,7 +111,7 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 }
 
 // =========================================================
-// 1. FOCUS TIMER TAB
+// 1. FOCUS TIMER TAB (Fixed: Keeps state alive)
 // =========================================================
 class FocusTimerTab extends StatefulWidget {
   const FocusTimerTab({super.key});
@@ -122,7 +120,11 @@ class FocusTimerTab extends StatefulWidget {
   State<FocusTimerTab> createState() => _FocusTimerTabState();
 }
 
-class _FocusTimerTabState extends State<FocusTimerTab> {
+class _FocusTimerTabState extends State<FocusTimerTab> with AutomaticKeepAliveClientMixin {
+  // ✅ Keeps timer running when switching tabs
+  @override
+  bool get wantKeepAlive => true;
+
   Timer? _timer;
   int _initialSeconds = 1500;
   int _remainingSeconds = 1500;
@@ -259,6 +261,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ Required for KeepAlive
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
@@ -271,7 +274,6 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Task Linking Dropdown
               Container(
                 margin: const EdgeInsets.only(bottom: 40),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -293,7 +295,6 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
                 ),
               ),
 
-              // Circular Progress
               CircularPercentIndicator(
                 radius: 130.0,
                 lineWidth: 15.0,
@@ -334,7 +335,6 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 
               const SizedBox(height: 50),
 
-              // Controls
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -353,7 +353,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
                 ],
               ),
 
-              const SizedBox(height: 100), // Bottom padding
+              const SizedBox(height: 100),
             ],
           ),
         );
@@ -382,7 +382,7 @@ class _FocusTimerTabState extends State<FocusTimerTab> {
 }
 
 // =========================================================
-// 2. ALARM TAB (FIXED)
+// 2. ALARM TAB (FIXED: Saves to Hive + Keeps State)
 // =========================================================
 class AlarmTab extends StatefulWidget {
   const AlarmTab({super.key});
@@ -391,15 +391,53 @@ class AlarmTab extends StatefulWidget {
   State<AlarmTab> createState() => _AlarmTabState();
 }
 
-class _AlarmTabState extends State<AlarmTab> {
-  List<Map<String, dynamic>> alarms = [
-    {'id': 1, 'time': const TimeOfDay(hour: 6, minute: 0), 'label': 'Morning Training', 'isActive': true},
-  ];
+class _AlarmTabState extends State<AlarmTab> with AutomaticKeepAliveClientMixin {
+  // ✅ Keeps alarm list visible when switching tabs
+  @override
+  bool get wantKeepAlive => true;
 
-  // Helper to convert TimeOfDay to next DateTime instance
-  DateTime _nextInstanceOfTime(TimeOfDay time) {
+  late Box _alarmBox;
+  List<Map<String, dynamic>> alarms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAlarms();
+  }
+
+  // ✅ LOAD ALARMS FROM DATABASE
+  Future<void> _loadAlarms() async {
+    _alarmBox = await Hive.openBox('alarmsBox');
+    if (_alarmBox.isNotEmpty) {
+      setState(() {
+        alarms = List<Map<String, dynamic>>.from(
+            _alarmBox.values.map((e) {
+              // Convert stored map back to usable format (TimeOfDay needs reconstruction)
+              final map = Map<String, dynamic>.from(e);
+              return {
+                'id': map['id'],
+                'hour': map['hour'],
+                'minute': map['minute'],
+                'label': map['label'],
+                'isActive': map['isActive'],
+              };
+            })
+        );
+      });
+    }
+  }
+
+  // ✅ SAVE ALARMS TO DATABASE
+  Future<void> _saveAlarms() async {
+    await _alarmBox.clear();
+    for (var alarm in alarms) {
+      await _alarmBox.add(alarm);
+    }
+  }
+
+  DateTime _nextInstanceOfTime(int hour, int minute) {
     final now = DateTime.now();
-    DateTime scheduledDate = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    DateTime scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
@@ -411,18 +449,16 @@ class _AlarmTabState extends State<AlarmTab> {
     final alarm = alarms[index];
 
     if (val) {
-      // FIX: Convert TimeOfDay to DateTime before scheduling
-      final TimeOfDay timeOfDay = alarm['time'];
-      final DateTime scheduledTime = _nextInstanceOfTime(timeOfDay);
-
+      final DateTime scheduledTime = _nextInstanceOfTime(alarm['hour'], alarm['minute']);
       NotificationService.scheduleAlarm(
           id: alarm['id'],
           title: alarm['label'],
-          time: scheduledTime // Passing DateTime now
+          time: scheduledTime
       );
     } else {
       NotificationService.cancelNotification(alarm['id']);
     }
+    _saveAlarms(); // ✅ Save change
   }
 
   void _addAlarm() async {
@@ -445,24 +481,38 @@ class _AlarmTabState extends State<AlarmTab> {
     );
 
     if (picked != null) {
-      final newId = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Unique Int ID
+      final newId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       setState(() {
-        alarms.add({'id': newId, 'time': picked, 'label': 'New Mission', 'isActive': true});
+        alarms.add({
+          'id': newId,
+          'hour': picked.hour,
+          'minute': picked.minute,
+          'label': 'New Mission',
+          'isActive': true
+        });
       });
 
-      // FIX: Convert TimeOfDay to DateTime before scheduling
-      final DateTime scheduledTime = _nextInstanceOfTime(picked);
-
+      final DateTime scheduledTime = _nextInstanceOfTime(picked.hour, picked.minute);
       NotificationService.scheduleAlarm(
           id: newId,
           title: "New Mission",
-          time: scheduledTime // Passing DateTime now
+          time: scheduledTime
       );
+      _saveAlarms(); // ✅ Save new alarm
     }
+  }
+
+  void _deleteAlarm(int index) {
+    NotificationService.cancelNotification(alarms[index]['id']);
+    setState(() {
+      alarms.removeAt(index);
+    });
+    _saveAlarms(); // ✅ Save deletion
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ Required for KeepAlive
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
@@ -486,37 +536,47 @@ class _AlarmTabState extends State<AlarmTab> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final alarm = alarms[index];
-              final time = alarm['time'] as TimeOfDay;
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: alarm['isActive'] ? theme.accentColor.withOpacity(0.5) : theme.textColor.withOpacity(0.05)),
-                  boxShadow: theme.isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              return Dismissible(
+                key: Key(alarm['id'].toString()),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) => _deleteAlarm(index),
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(20)),
+                  child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            "${time.hour.toString().padLeft(2,'0')}:${time.minute.toString().padLeft(2,'0')}",
-                            style: TextStyle(color: alarm['isActive'] ? theme.textColor : theme.subText, fontSize: 32, fontWeight: FontWeight.bold)
-                        ),
-                        Text(
-                            alarm['label'],
-                            style: TextStyle(color: alarm['isActive'] ? theme.accentColor : theme.subText, fontSize: 12, fontWeight: FontWeight.bold)
-                        ),
-                      ],
-                    ),
-                    Switch(
-                      value: alarm['isActive'],
-                      activeColor: theme.accentColor,
-                      onChanged: (val) => _toggleAlarm(index, val),
-                    ),
-                  ],
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: alarm['isActive'] ? theme.accentColor.withOpacity(0.5) : theme.textColor.withOpacity(0.05)),
+                    boxShadow: theme.isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              "${alarm['hour'].toString().padLeft(2,'0')}:${alarm['minute'].toString().padLeft(2,'0')}",
+                              style: TextStyle(color: alarm['isActive'] ? theme.textColor : theme.subText, fontSize: 32, fontWeight: FontWeight.bold)
+                          ),
+                          Text(
+                              alarm['label'],
+                              style: TextStyle(color: alarm['isActive'] ? theme.accentColor : theme.subText, fontSize: 12, fontWeight: FontWeight.bold)
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: alarm['isActive'],
+                        activeColor: theme.accentColor,
+                        onChanged: (val) => _toggleAlarm(index, val),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -528,7 +588,7 @@ class _AlarmTabState extends State<AlarmTab> {
 }
 
 // =========================================================
-// 3. STOPWATCH TAB
+// 3. STOPWATCH TAB (Fixed: Keeps state alive)
 // =========================================================
 class StopwatchTab extends StatefulWidget {
   const StopwatchTab({super.key});
@@ -537,7 +597,11 @@ class StopwatchTab extends StatefulWidget {
   State<StopwatchTab> createState() => _StopwatchTabState();
 }
 
-class _StopwatchTabState extends State<StopwatchTab> {
+class _StopwatchTabState extends State<StopwatchTab> with AutomaticKeepAliveClientMixin {
+  // ✅ Keeps stopwatch running when switching tabs
+  @override
+  bool get wantKeepAlive => true;
+
   late Stopwatch _stopwatch;
   late Timer _timer;
 
@@ -586,6 +650,7 @@ class _StopwatchTabState extends State<StopwatchTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ Required for KeepAlive
     return ListenableBuilder(
       listenable: ThemeManager(),
       builder: (context, child) {
@@ -632,7 +697,7 @@ class _StopwatchTabState extends State<StopwatchTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 100), // Bottom padding
+            const SizedBox(height: 100),
           ],
         );
       },

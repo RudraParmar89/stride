@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart'; // Fixed: Required for debugPrint
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -46,7 +46,8 @@ class AuthService {
     return result.user;
   }
 
-  static Future<void> sendPasswordReset(String email) async {
+  // ✅ RENAMED TO MATCH LOGIN SCREEN
+  static Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
@@ -70,7 +71,6 @@ class AuthService {
     final LoginResult result = await FacebookAuth.instance.login();
     if (result.status != LoginStatus.success) return null;
 
-    // Fixed: Use tokenString instead of token for version 6.0.0+
     final credential =
     FacebookAuthProvider.credential(result.accessToken!.tokenString);
     final userCred = await _auth.signInWithCredential(credential);

@@ -34,8 +34,8 @@ class DailyGoalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Text(
+          children: [ // ✅ Removed 'const' here so we can use variables
+            const Text(
               "DAILY QUEST",
               style: TextStyle(
                 color: Color(0xFF64748B),
@@ -44,19 +44,19 @@ class DailyGoalCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
-              "25 min Deep Focus",
-              style: TextStyle(
+              title, // ✅ Now uses the actual title passed in
+              style: const TextStyle(
                 color: Color(0xFF0F172A),
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              "+40 XP · Rank Progress",
-              style: TextStyle(
+              subtitle, // ✅ Now uses the actual subtitle passed in
+              style: const TextStyle(
                 color: Color(0xFF475569),
                 fontSize: 14,
               ),

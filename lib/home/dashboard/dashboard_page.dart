@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart'; // Needed for User Name
 import '../../theme/theme_manager.dart';
 import '../../controllers/xp_controller.dart';
 import '../../controllers/task_controller.dart';
+import '../../models/task.dart';
 import '../../services/step_tracker_service.dart';
 import 'modals/add_task_sheet.dart';
 import '../chat/chat_page.dart'; // <--- CHAT IMPORT
@@ -119,7 +120,12 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                     onQuestToggle: (id) {
                       taskController.toggleTask(id);
                       final task = taskController.tasks.firstWhere((t) => t.id == id);
-                      if (task.isCompleted) xpController.addXp(50);
+                      if (task.isCompleted) {
+                        xpController.addXp(task.xpReward, taskCategory: task.category);
+                        if (task.embersReward > 0) {
+                          xpController.addEmbers(task.embersReward);
+                        }
+                      }
                     },
                     onQuestDelete: (id) => taskController.deleteTask(id),
                   ),
@@ -152,7 +158,7 @@ class _HeaderSection extends StatelessWidget {
       File file = File(path);
       if (file.existsSync()) return FileImage(file);
     }
-    return const AssetImage('assets/profile/astra_happy.png');
+    return const AssetImage('assets/images/astra_head.png');
   }
 
   @override
@@ -176,7 +182,7 @@ class _HeaderSection extends StatelessWidget {
                 ValueListenableBuilder(
                     valueListenable: Hive.box('settingsBox').listenable(keys: ['userAvatar']),
                     builder: (context, Box box, _) {
-                      String avatarPath = box.get('userAvatar', defaultValue: 'assets/profile/astra_happy.png');
+                      String avatarPath = box.get('userAvatar', defaultValue: 'assets/images/astra_head.png');
                       return ScaleTransition(
                         scale: pulseAnimation,
                         child: Stack(
@@ -434,7 +440,15 @@ class _DailyQuestSection extends StatelessWidget {
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
-            return _QuestTile(task: task, index: index, onTap: () => onQuestToggle(task.id), onDelete: () => onQuestDelete(task.id));
+            return task.isUserCreated
+                ? Dismissible(
+                    key: ValueKey(task.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.delete_outline, color: Colors.white)),
+                    onDismissed: (_) => onQuestDelete(task.id),
+                    child: _QuestTile(task: task, index: index, onTap: () => onQuestToggle(task.id), onDelete: () => onQuestDelete(task.id)),
+                  )
+                : _QuestTile(task: task, index: index, onTap: () => onQuestToggle(task.id));
           },
         ),
       ],
@@ -447,9 +461,9 @@ class _QuestTile extends StatefulWidget {
   final Task task;
   final int index;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
-  const _QuestTile({required this.task, required this.index, required this.onTap, required this.onDelete});
+  const _QuestTile({required this.task, required this.index, required this.onTap, this.onDelete});
 
   @override
   State<_QuestTile> createState() => _QuestTileState();
@@ -485,51 +499,46 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
     final theme = ThemeManager();
     final accent = _getCategoryColor(widget.task.category);
 
-    return Dismissible(
-      key: ValueKey(widget.task.id),
-      direction: DismissDirection.endToStart,
-      background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.delete_outline, color: Colors.white)),
-      onDismissed: (_) => widget.onDelete(),
-      child: GestureDetector(
-        onTap: _handleTap,
-        child: ScaleTransition(
-          scale: _scaleController,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: widget.task.isCompleted ? accent.withOpacity(0.15) : theme.cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: widget.task.isCompleted ? accent.withOpacity(0.6) : theme.textColor.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: widget.task.isCompleted ? accent : accent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                  child: widget.task.isCompleted ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : Icon(Icons.circle_outlined, color: accent, size: 20),
+    return GestureDetector(
+      onTap: _handleTap,
+      child: ScaleTransition(
+        scale: _scaleController,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: widget.task.isCompleted ? accent.withOpacity(0.15) : theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: widget.task.isCompleted ? accent.withOpacity(0.6) : theme.textColor.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: widget.task.isCompleted ? accent : accent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: widget.task.isCompleted ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : Icon(Icons.circle_outlined, color: accent, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.task.title, style: TextStyle(color: widget.task.isCompleted ? theme.subText : theme.textColor, fontWeight: FontWeight.bold, fontSize: 16, decoration: widget.task.isCompleted ? TextDecoration.lineThrough : null)),
+                    const SizedBox(height: 4),
+                    Text(widget.task.category.toUpperCase(), style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.task.title, style: TextStyle(color: widget.task.isCompleted ? theme.subText : theme.textColor, fontWeight: FontWeight.bold, fontSize: 16, decoration: widget.task.isCompleted ? TextDecoration.lineThrough : null)),
-                      const SizedBox(height: 4),
-                      Text(widget.task.category.toUpperCase(), style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: theme.bgColor, borderRadius: BorderRadius.circular(8)),
-                  child: Text("+${widget.task.xpReward} XP", style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: theme.bgColor, borderRadius: BorderRadius.circular(8)),
+                child: Text("+${widget.task.xpReward} XP", style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              if (widget.onDelete != null)
                 IconButton(onPressed: widget.onDelete, icon: Icon(Icons.delete_forever_rounded, color: theme.subText.withOpacity(0.3), size: 20), visualDensity: VisualDensity.compact),
-              ],
-            ),
+            ],
           ),
         ),
       ),

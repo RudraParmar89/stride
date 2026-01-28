@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/user_profile.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -45,10 +48,26 @@ class _SplashScreenState extends State<SplashScreen>
       setState(() => _darkBackground = false);
     });
 
-    // Navigate → Onboarding
-    Timer(const Duration(milliseconds: 2600), () {
+    // Navigate based on auth and profile status
+    Timer(const Duration(milliseconds: 2600), () async {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/onboarding');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // User is logged in, check if profile exists
+        final userBox = await Hive.openBox<UserProfile>('userBox');
+        final profile = userBox.get('currentUser');
+        if (profile != null) {
+          // Has profile, go to home
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          // No profile, go to identity
+          Navigator.pushReplacementNamed(context, '/identity');
+        }
+      } else {
+        // Not logged in, start onboarding
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      }
     });
   }
 

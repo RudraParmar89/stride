@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // ✅ Added for persistence
 import '../theme/theme_manager.dart';
 
 // Services
@@ -20,24 +21,66 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // Mock Data
-  final Map<DateTime, List<Map<String, dynamic>>> _events = {
-    DateTime.utc(2025, 1, 15): [{'type': 1, 'title': 'Flutter Prototype', 'expected': '4h', 'actual': '5.5h'}],
-    DateTime.utc(2025, 1, 20): [{'type': 2, 'title': "Astra's Creation Day"}],
-  };
+  // ✅ Hive Box for persistent storage
+  late Box _calendarBox;
+
+  // Data Source for Calendar
+  Map<DateTime, List<Map<String, dynamic>>> _events = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    // Ensure notifications are initialized (safeguard)
+    _initData();
+  }
+
+  // --- 1. INITIALIZE & LOAD DATA ---
+  Future<void> _initData() async {
+    // Open Box
+    _calendarBox = await Hive.openBox('calendar_events');
+
+    // Ensure Notifications are ready
     NotificationService.init();
+
+    _loadEvents();
+  }
+
+  // --- 2. LOAD EVENTS FROM HIVE ---
+  void _loadEvents() {
+    final rawData = _calendarBox.get('events', defaultValue: []);
+    final List<dynamic> storedEvents = List<dynamic>.from(rawData);
+
+    Map<DateTime, List<Map<String, dynamic>>> tempEvents = {};
+
+    for (var item in storedEvents) {
+      final event = Map<String, dynamic>.from(item);
+      final DateTime date = DateTime.parse(event['date']); // Rehydrate Date
+      final DateTime utcDate = DateTime.utc(date.year, date.month, date.day);
+
+      if (tempEvents[utcDate] == null) tempEvents[utcDate] = [];
+      tempEvents[utcDate]!.add(event);
+    }
+
+    setState(() {
+      _events = tempEvents;
+    });
+  }
+
+  // --- 3. SAVE EVENTS TO HIVE ---
+  Future<void> _saveEvents() async {
+    // Flatten Map back to List for Hive storage
+    List<Map<String, dynamic>> allEvents = [];
+    _events.forEach((key, value) {
+      allEvents.addAll(value);
+    });
+    await _calendarBox.put('events', allEvents);
   }
 
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
     return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
   }
 
+  // --- 4. ADD NEW OPERATION ---
   void _openAddProjectSheet() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -51,25 +94,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final DateTime date = result['date'];
       final DateTime utcDate = DateTime.utc(date.year, date.month, date.day);
 
+      // ✅ LOGIC: Expected = User Date, Actual = TBD
+      final newEvent = {
+        'id': DateTime.now().millisecondsSinceEpoch, // Unique ID
+        'type': 1,
+        'title': title,
+        'expected': DateFormat('MMM d, HH:mm').format(date),
+        'actual': 'TBD',
+        'isCompleted': false,
+        'date': utcDate.toIso8601String(), // Store as string for Hive
+      };
+
       setState(() {
         if (_events[utcDate] == null) _events[utcDate] = [];
-        _events[utcDate]!.add({
-          'type': 1,
-          'title': title,
-          'expected': 'TBD',
-          'actual': '0h',
-        });
+        _events[utcDate]!.add(newEvent);
         _selectedDay = utcDate;
         _focusedDay = utcDate;
       });
 
-      // FIX: Changed 'deadline' to 'date' to match NotificationService
+      _saveEvents(); // Save to disk
+
       await NotificationService.scheduleDeadlineNotification(
         id: date.hashCode,
         title: title,
         date: date,
       );
     }
+  }
+
+  // --- 5. COMPLETE OPERATION (CHECKLIST) ---
+  void _toggleOperationComplete(Map<String, dynamic> event) {
+    setState(() {
+      // Toggle Status
+      event['isCompleted'] = !event['isCompleted'];
+
+      // ✅ LOGIC: If complete, set Actual to NOW. If unchecked, reset to TBD.
+      if (event['isCompleted']) {
+        event['actual'] = DateFormat('MMM d, HH:mm').format(DateTime.now());
+      } else {
+        event['actual'] = 'TBD';
+      }
+    });
+
+    _saveEvents(); // Save changes immediately
   }
 
   @override
@@ -94,15 +161,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
 
-          // MOVED DOWN: Replaced AppBar with SafeArea + Column structure
           body: SafeArea(
-            bottom: false, // Allow content to flow behind bottom nav
+            bottom: false,
             child: Column(
               children: [
-                // --- SPACER TO PUSH CONTENT DOWN ---
                 const SizedBox(height: 30),
 
-                // --- CUSTOM HEADER ---
+                // --- HEADER ---
                 Center(
                   child: Text(
                     "OPERATION TIMELINE",
@@ -115,9 +180,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20), // Spacing between header and calendar
+                const SizedBox(height: 20),
 
-                // 1. CALENDAR CARD
+                // --- CALENDAR ---
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 12),
                   padding: const EdgeInsets.only(bottom: 12),
@@ -170,7 +235,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 const SizedBox(height: 24),
 
-                // 2. MISSION LOG HEADER
+                // --- MISSION LOG HEADER ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Row(
@@ -192,7 +257,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 const SizedBox(height: 12),
 
-                // 3. EVENT LIST
+                // --- EVENT LIST ---
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -204,9 +269,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             child: _buildDeadlineCard(theme, event),
                           );
                         } else {
+                          // Fallback for older events or different types
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12.0),
-                            child: _buildBirthdayCard(theme, event['title'], accentGold),
+                            child: _buildBirthdayCard(theme, event['title'] ?? "Event", accentGold),
                           );
                         }
                       }),
@@ -240,12 +306,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildDeadlineCard(ThemeManager theme, Map<String, dynamic> event) {
     Color color = const Color(0xFFFF5252);
+    bool isCompleted = event['isCompleted'] ?? false;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.textColor.withOpacity(0.05)),
+        border: Border.all(
+            color: isCompleted
+                ? Colors.green.withOpacity(0.5)
+                : theme.textColor.withOpacity(0.05)
+        ),
       ),
       child: Column(
         children: [
@@ -256,8 +328,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-                    child: Icon(Icons.timer_off_outlined, color: color, size: 16),
+                    decoration: BoxDecoration(
+                        color: isCompleted ? Colors.green.withOpacity(0.1) : color.withOpacity(0.1),
+                        shape: BoxShape.circle
+                    ),
+                    child: Icon(
+                        isCompleted ? Icons.check_circle : Icons.timer_outlined,
+                        color: isCompleted ? Colors.green : color,
+                        size: 16
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -265,25 +344,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     children: [
                       Text(
                         event['title'],
-                        style: TextStyle(color: theme.textColor, fontSize: 15, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: theme.textColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            decoration: isCompleted ? TextDecoration.lineThrough : null
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Critical Deadline",
-                        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+                        isCompleted ? "Operation Complete" : "Pending Execution",
+                        style: TextStyle(
+                            color: isCompleted ? Colors.green : color,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
+              // ✅ CHECKLIST BUTTON
+              Checkbox(
+                value: isCompleted,
+                activeColor: Colors.green,
+                side: BorderSide(color: theme.subText, width: 2),
+                onChanged: (val) => _toggleOperationComplete(event),
+              )
             ],
           ),
           const SizedBox(height: 12),
+          // ✅ ANALYSIS ROW
           Row(
             children: [
               Expanded(child: _buildStatColumn(theme, "EXPECTED", event['expected'], theme.textColor)),
               Container(width: 1, height: 24, color: theme.subText.withOpacity(0.2)),
-              Expanded(child: _buildStatColumn(theme, "ACTUAL", event['actual'], color)),
+              Expanded(child: _buildStatColumn(
+                  theme,
+                  "ACTUAL",
+                  event['actual'],
+                  isCompleted ? Colors.green : color
+              )),
             ],
           ),
         ],
@@ -304,7 +405,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(Icons.cake_rounded, color: color, size: 20),
+            child: Icon(Icons.star, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Column(
@@ -315,7 +416,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 style: TextStyle(color: theme.textColor, fontSize: 15, fontWeight: FontWeight.bold),
               ),
               Text(
-                "Guild Member Anniversary",
+                "Special Event",
                 style: TextStyle(color: theme.subText, fontSize: 11),
               ),
             ],
@@ -340,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         const SizedBox(height: 2),
         Text(
           value,
-          style: TextStyle(color: valueColor, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ],
     );

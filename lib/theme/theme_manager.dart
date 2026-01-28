@@ -2,71 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class ThemeManager extends ChangeNotifier {
-  // Singleton Pattern: Ensures the entire app uses the same theme instance
-  static final ThemeManager _instance = ThemeManager._internal();
-  factory ThemeManager() => _instance;
+  // Access the box
+  final Box _box = Hive.box('settingsBox');
 
-  // Constructor: Loads saved settings immediately when the app starts
-  ThemeManager._internal() {
-    _loadFromStorage();
+  late bool _isDark;
+  late Color _accentColor;
+
+  ThemeManager() {
+    _loadSettings();
   }
 
-  // --- VARIABLES ---
-  bool _isDark = true; // Default to "Stealth Mode" (Dark)
-  Color _accentColor = const Color(0xFF00D2D3); // Default to Cyan
+  void _loadSettings() {
+    // 🛡️ CRASH FIX: use 'as bool?' and '?? true' to handle possible nulls
+    final dynamic savedDarkMode = _box.get('isDarkMode', defaultValue: true);
+    _isDark = (savedDarkMode as bool?) ?? true;
 
-  // --- GETTERS (The UI listens to these) ---
+    // 🛡️ CRASH FIX: Handle color safely
+    final dynamic savedColor = _box.get('accentColor', defaultValue: const Color(0xFF2ECC71).value);
+    final int colorInt = (savedColor as int?) ?? const Color(0xFF2ECC71).value;
+    _accentColor = Color(colorInt);
+  }
+
+  // --- GETTERS ---
   bool get isDark => _isDark;
+  ThemeMode get themeMode => _isDark ? ThemeMode.dark : ThemeMode.light;
   Color get accentColor => _accentColor;
 
-  // --- DYNAMIC COLORS (Auto-update based on mode) ---
-  // Background: Deep Blue-Black (Dark) or Clean Grey-White (Light)
-  Color get bgColor => _isDark ? const Color(0xFF0D1117) : const Color(0xFFF2F4F8);
+  // --- DYNAMIC COLORS ---
+  Color get bgColor => isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD);
+  Color get cardColor => isDark ? const Color(0xFF1E1E1E) : Colors.white;
+  Color get textColor => isDark ? Colors.white : Colors.black;
+  Color get subText => isDark ? Colors.grey.shade600 : Colors.grey.shade700;
 
-  // Cards: Dark Grey (Dark) or Pure White (Light)
-  Color get cardColor => _isDark ? const Color(0xFF161B22) : Colors.white;
+  // --- METHODS ---
 
-  // Text: White (Dark) or Dark Navy (Light)
-  Color get textColor => _isDark ? Colors.white : const Color(0xFF1A1A2D);
-
-  // Subtext: Faded White (Dark) or Grey (Light)
-  Color get subText => _isDark ? Colors.white54 : const Color(0xFF6E6E80);
-
-  // --- STORAGE LOGIC (The Brain) ---
-  void _loadFromStorage() {
-    // NOTE: 'settingsBox' MUST be opened in main.dart before this runs
-    if (Hive.isBoxOpen('settingsBox')) {
-      final box = Hive.box('settingsBox');
-
-      // 1. Load Theme Mode
-      _isDark = box.get('isDark', defaultValue: true);
-
-      // 2. Load Accent Color
-      int colorValue = box.get('accentColor', defaultValue: 0xFF00D2D3);
-      _accentColor = Color(colorValue);
-
-      notifyListeners();
-    }
-  }
-
-  // --- ACTIONS (Call these from your Settings Page) ---
-
-  // Switch between Light & Dark
-  // Accepts a boolean to match the Switch widget's onChanged(val)
+  // ✅ Renamed to 'toggleTheme' to match your ProfileScreen
   void toggleTheme(bool isDark) {
     _isDark = isDark;
-    if (Hive.isBoxOpen('settingsBox')) {
-      Hive.box('settingsBox').put('isDark', _isDark);
-    }
+    _box.put('isDarkMode', _isDark);
     notifyListeners();
   }
 
-  // Change the main "Hero Color" (Red, Green, Gold, etc.)
   void setAccentColor(Color color) {
     _accentColor = color;
-    if (Hive.isBoxOpen('settingsBox')) {
-      Hive.box('settingsBox').put('accentColor', _accentColor.value);
-    }
+    _box.put('accentColor', color.value);
     notifyListeners();
   }
 }

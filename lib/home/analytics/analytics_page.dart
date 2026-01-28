@@ -10,6 +10,7 @@ import '../../controllers/xp_controller.dart';
 
 // Services
 import '../../services/pdf_service.dart';
+import './leaderboard_widget.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -309,6 +310,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> with TickerProviderStateM
                     _buildAttentionSpanCard(theme),
                     const SizedBox(height: 30),
 
+                    // LEADERBOARD SECTION
+                    const LeaderboardWidget(),
+                    const SizedBox(height: 30),
+
                     if (_showInsights) ...[
                       _buildAIInsights(theme),
                       const SizedBox(height: 120),
@@ -543,41 +548,123 @@ class _AnalyticsPageState extends State<AnalyticsPage> with TickerProviderStateM
   }
 
   Widget _buildRadarChart(ThemeManager theme, XpController xp) {
-    return Container(
-      key: const ValueKey("RADAR"),
-      height: 280,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.subText.withOpacity(0.05)),
-      ),
-      child: RadarChart(
-        RadarChartData(
-          radarShape: RadarShape.polygon,
-          ticksTextStyle: const TextStyle(color: Colors.transparent),
-          gridBorderData: BorderSide(color: theme.subText.withOpacity(0.1)),
-          titlePositionPercentageOffset: 0.2,
-          titleTextStyle: TextStyle(color: theme.textColor, fontSize: 10, fontWeight: FontWeight.bold),
-          dataSets: [
-            RadarDataSet(
-              fillColor: theme.accentColor.withOpacity(0.2),
-              borderColor: theme.accentColor,
-              entryRadius: 2,
-              dataEntries: [
-                RadarEntry(value: xp.attributes['STR'] ?? 0),
-                RadarEntry(value: xp.attributes['AGI'] ?? 0),
-                RadarEntry(value: xp.attributes['INT'] ?? 0),
-                RadarEntry(value: xp.attributes['VIT'] ?? 0),
-                RadarEntry(value: xp.attributes['SEN'] ?? 0)
+    return Column(
+      children: [
+        Container(
+          key: const ValueKey("RADAR"),
+          height: 280,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: theme.subText.withOpacity(0.05)),
+          ),
+          child: RadarChart(
+            RadarChartData(
+              radarShape: RadarShape.polygon,
+              ticksTextStyle: const TextStyle(color: Colors.transparent),
+              gridBorderData: BorderSide(color: theme.subText.withOpacity(0.1)),
+              titlePositionPercentageOffset: 0.2,
+              titleTextStyle: TextStyle(color: theme.textColor, fontSize: 10, fontWeight: FontWeight.bold),
+              dataSets: [
+                RadarDataSet(
+                  fillColor: theme.accentColor.withOpacity(0.2),
+                  borderColor: theme.accentColor,
+                  entryRadius: 2,
+                  dataEntries: [
+                    RadarEntry(value: xp.attributes['STR'] ?? 0),
+                    RadarEntry(value: xp.attributes['AGI'] ?? 0),
+                    RadarEntry(value: xp.attributes['INT'] ?? 0),
+                    RadarEntry(value: xp.attributes['VIT'] ?? 0),
+                    RadarEntry(value: xp.attributes['SEN'] ?? 0)
+                  ],
+                )
               ],
-            )
-          ],
-          getTitle: (i, angle) {
-            const titles = ['STR', 'AGI', 'INT', 'VIT', 'SEN'];
-            return RadarChartTitle(text: titles[i]);
-          },
+              getTitle: (i, angle) {
+                const titles = ['Strength', 'Agility', 'Intelligence', 'Vitality', 'Focus'];
+                return RadarChartTitle(text: titles[i]);
+              },
+            ),
+          ),
         ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: theme.subText.withOpacity(0.05)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Character Stats",
+                style: TextStyle(
+                  color: theme.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildStatRow(theme, "Strength", "Physical power & muscle development", xp.attributes['STR'] ?? 0),
+              _buildStatRow(theme, "Agility", "Speed, cardio & coordination", xp.attributes['AGI'] ?? 0),
+              _buildStatRow(theme, "Intelligence", "Learning & mental capacity", xp.attributes['INT'] ?? 0),
+              _buildStatRow(theme, "Vitality", "Health, endurance & recovery", xp.attributes['VIT'] ?? 0),
+              _buildStatRow(theme, "Focus", "Concentration & mental discipline", xp.attributes['SEN'] ?? 0),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatRow(ThemeManager theme, String name, String description, double value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: theme.textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: theme.subText,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: LinearProgressIndicator(
+              value: value / 100,
+              backgroundColor: theme.subText.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(theme.accentColor),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            "${value.toStringAsFixed(0)}",
+            style: TextStyle(
+              color: theme.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

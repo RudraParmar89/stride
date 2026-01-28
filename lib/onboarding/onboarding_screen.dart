@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
-import 'package:stride/auth/login_screen.dart';
+
+// We don't need to import LoginScreen directly because we use Named Routes now
+// import 'package:stride/auth/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -47,11 +49,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  // ✅ CORRECTED NAVIGATION
   void _goToLogin() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    // Uses the named route defined in main.dart to ensure strict flow
+    Navigator.pushReplacementNamed(context, '/auth');
   }
 
   @override
@@ -96,8 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 controller: _controller,
                 itemCount: pages.length,
                 onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (_, i) =>
-                    _AnimatedOnboardPage(data: pages[i]),
+                itemBuilder: (_, i) => _AnimatedOnboardPage(data: pages[i]),
               ),
             ),
 
@@ -111,8 +111,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 6,
                   width: _index == i ? 22 : 6,
                   decoration: BoxDecoration(
-                    color:
-                    _index == i ? Colors.black : Colors.grey.shade300,
+                    color: _index == i ? Colors.black : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
@@ -138,8 +137,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     onPressed: () {
                       _controller.nextPage(
-                        duration:
-                        const Duration(milliseconds: 350),
+                        duration: const Duration(milliseconds: 350),
                         curve: Curves.easeInOut,
                       );
                     },
@@ -195,8 +193,7 @@ class _AnimatedOnboardPage extends StatelessWidget {
             Text(
               data.title,
               textAlign: TextAlign.center,
-              style:
-              const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 14),
             Text(
@@ -337,8 +334,6 @@ class _SwipeToStartState extends State<_SwipeToStart>
     setState(() => _holding = false);
   }
 }
-
-
 
 /* ---------------------------------------------------------- */
 
