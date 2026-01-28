@@ -15,13 +15,13 @@ class TaskController extends ChangeNotifier {
 
   // --- CRUD OPERATIONS ---
 
-  void addTask(String title, {String category = "General", String description = ""}) {
+  void addTask(String title, {String category = "General", String description = "", int xpReward = 50}) {
     final newTask = Task(
       id: const Uuid().v4(),
       title: title,
       category: category,
       description: description,
-      xpReward: 50,
+      xpReward: xpReward,
       isCompleted: false,
       date: DateTime.now(),
       isUserCreated: true, // User-created task

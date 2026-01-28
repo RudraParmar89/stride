@@ -101,6 +101,17 @@ class TaskGeneratorService {
       date: now,
     ));
 
+    // 5b. Daily Spiritual Task (Neutral for all religions)
+    final spiritualTask = _getDailySpiritualTask(now.weekday);
+    tasks.add(Task(
+      id: uuid.v4(),
+      title: spiritualTask['title']!,
+      category: "Spirit",
+      description: spiritualTask['desc']!,
+      xpReward: 35,
+      date: now,
+    ));
+
     // 6. Daily Planning
     tasks.add(Task(
       id: uuid.v4(),
@@ -424,6 +435,20 @@ class TaskGeneratorService {
       case DateTime.saturday: return {'title': "Novelty Injection", 'desc': "Do something new."};
       case DateTime.sunday: return {'title': "Deep Reflection", 'desc': "Identity solidifies in silence."};
       default: return {'title': "Identity Maintenance", 'desc': "Reconnect."};
+    }
+  }
+
+  // --- 🙏 SPIRITUAL FOUNDATION (Neutral for all religions) ---
+  static Map<String, String> _getDailySpiritualTask(int weekday) {
+    switch (weekday) {
+      case DateTime.monday: return {'title': "Purpose Reflection", 'desc': "Why do you do what you do? Connect with your deeper purpose."};
+      case DateTime.tuesday: return {'title': "Gratitude Practice", 'desc': "Express gratitude for 3 things you often take for granted."};
+      case DateTime.wednesday: return {'title': "Mindful Walk", 'desc': "Take a slow walk and observe nature without judgment."};
+      case DateTime.thursday: return {'title': "Inner Peace", 'desc': "Sit in silence for 10 mins. Notice your thoughts without reaction."};
+      case DateTime.friday: return {'title': "Compassion Meditation", 'desc': "Cultivate kindness toward yourself and others."};
+      case DateTime.saturday: return {'title': "Values Alignment", 'desc': "Review your actions. Did they align with your values this week?"};
+      case DateTime.sunday: return {'title': "Connection & Stillness", 'desc': "Connect with something greater than yourself—however you define it."};
+      default: return {'title': "Inner Awareness", 'desc': "Cultivate presence and connection with your inner self."};
     }
   }
 

@@ -27,13 +27,14 @@ class TaskAdapter extends TypeAdapter<Task> {
       isUserCreated: fields[7] as bool,
       embersReward: fields[8] as int,
       hasAntiChit: fields[9] as bool,
+      durationMinutes: fields[10] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +54,9 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(8)
       ..write(obj.embersReward)
       ..writeByte(9)
-      ..write(obj.hasAntiChit);
+      ..write(obj.hasAntiChit)
+      ..writeByte(10)
+      ..write(obj.durationMinutes);
   }
 
   @override

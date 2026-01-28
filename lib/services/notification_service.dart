@@ -191,6 +191,83 @@ class NotificationService {
     );
   }
 
+  // =========================================================
+  // DUMMY NOTIFICATIONS FOR TESTING
+  // =========================================================
+
+  static Future<void> sendDummyNotification(String type) async {
+    final now = DateTime.now();
+    
+    switch (type) {
+      case 'achievement':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '🏆 Achievement Unlocked!',
+            body: 'You\'ve completed 7 day streak! Astra is proud of you!',
+            bigPicture: 'asset://assets/notifications/astra_happy.png',
+            notificationLayout: NotificationLayout.BigPicture,
+          ),
+        );
+        break;
+      case 'reminder':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '⚡ Daily Challenge Ready!',
+            body: 'New tasks available! Complete 3 quests to earn 500 XP.',
+          ),
+        );
+        break;
+      case 'mission':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '🎯 Critical Mission!',
+            body: 'Cardio Run (30 min) - Earn +60 XP & +4 Embers',
+          ),
+        );
+        break;
+      case 'streak':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '🔥 Streak Alert!',
+            body: 'Your 15 day streak is ending in 2 hours. Keep it alive!',
+            bigPicture: 'asset://assets/notifications/astra_focused.png',
+            notificationLayout: NotificationLayout.BigPicture,
+          ),
+        );
+        break;
+      case 'reward':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '💰 Rewards Pending!',
+            body: 'You have 250 Embers ready to spend at the Supply Depot.',
+          ),
+        );
+        break;
+      case 'levelup':
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: now.millisecondsSinceEpoch ~/ 1000,
+            channelKey: 'engagement_channel',
+            title: '⬆️ Level Up!',
+            body: 'Congratulations! You\'ve reached Level 5. New abilities unlocked!',
+            bigPicture: 'asset://assets/notifications/astra_happy.png',
+            notificationLayout: NotificationLayout.BigPicture,
+          ),
+        );
+        break;
+    }
+  }
+
   // --- UTILITIES ---
 
   static Future<void> cancelBriefing() async {

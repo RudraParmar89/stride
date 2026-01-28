@@ -64,79 +64,170 @@ class _TacticalRedeemPageState extends State<TacticalRedeemPage> {
         children: [
           Container(
             margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: theme.accentColor.withOpacity(0.3)),
               boxShadow: [BoxShadow(color: theme.accentColor.withOpacity(0.1), blurRadius: 15)],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("AVAILABLE EMBERS:", style: TextStyle(color: theme.subText, fontSize: 12, letterSpacing: 1)),
-                Text("${xpController.embers} EMBERS", style: TextStyle(color: theme.accentColor, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'Courier')),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("AVAILABLE EMBERS:", style: TextStyle(color: theme.subText, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text("${xpController.embers} 🔥", style: TextStyle(color: theme.accentColor, fontSize: 28, fontWeight: FontWeight.w900, fontFamily: 'Courier')),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.accentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.accentColor.withOpacity(0.3)),
+                      ),
+                      child: Icon(Icons.info_outline, color: theme.accentColor, size: 24),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_offer, color: theme.accentColor, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Exchange Embers for coupons and gear. Tap a coupon to redeem.",
+                          style: TextStyle(color: theme.subText, fontSize: 11, height: 1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
 
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: coupons.length,
-              itemBuilder: (context, index) {
-                final coupon = coupons[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 15),
-                  child: GestureDetector(
-                    onTap: () => _showEnlargedTicket(context, coupon, theme, xpController),
-                    child: ClipPath(
-                      clipper: TicketClipper(),
-                      child: Container(
-                        height: 110,
-                        color: theme.cardColor,
-                        child: Row(
-                          children: [
-                            Container(width: 8, color: coupon.accentColor),
-                            const SizedBox(width: 15),
-
-                            Hero(
-                              tag: coupon.code,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)]
-                                ),
-                                child: _buildLogoImage(coupon.imagePath, 45),
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(coupon.brandName, style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1)),
-                                  const SizedBox(height: 4),
-                                  Text(coupon.category, style: TextStyle(color: theme.subText, fontSize: 10, letterSpacing: 1.5)),
-                                ],
-                              ),
-                            ),
-
-                            Container(height: 60, width: 1, color: theme.subText.withOpacity(0.2), margin: const EdgeInsets.symmetric(horizontal: 10)),
-                            SizedBox(width: 90, child: Center(child: Text(coupon.discount, textAlign: TextAlign.center, style: TextStyle(color: coupon.accentColor, fontWeight: FontWeight.w900, fontSize: 14)))),
-                            const SizedBox(width: 10),
-                          ],
+            child: coupons.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.card_giftcard, color: theme.subText.withOpacity(0.5), size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          "No Coupons Available",
+                          style: TextStyle(color: theme.subText, fontSize: 14, fontWeight: FontWeight.w600),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Check back soon for new deals!",
+                          style: TextStyle(color: theme.subText.withOpacity(0.6), fontSize: 12),
+                        ),
+                      ],
                     ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: coupons.length,
+                    itemBuilder: (context, index) {
+                      final coupon = coupons[index];
+                      final canRedeem = xpController.embers >= coupon.embersRequired;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 15),
+                        child: GestureDetector(
+                          onTap: canRedeem ? () => _showEnlargedTicket(context, coupon, theme, xpController) : null,
+                          child: Opacity(
+                            opacity: canRedeem ? 1 : 0.6,
+                            child: ClipPath(
+                              clipper: TicketClipper(),
+                              child: Container(
+                                height: 110,
+                                color: theme.cardColor,
+                                child: Row(
+                                  children: [
+                                    Container(width: 8, color: canRedeem ? coupon.accentColor : Colors.grey),
+                                    const SizedBox(width: 15),
+
+                                    Hero(
+                                      tag: coupon.code,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
+                                        ),
+                                        child: _buildLogoImage(coupon.imagePath, 45),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 15),
+
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(coupon.brandName, style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1)),
+                                          const SizedBox(height: 4),
+                                          Text(coupon.category, style: TextStyle(color: theme.subText, fontSize: 10, letterSpacing: 1.5)),
+                                        ],
+                                      ),
+                                    ),
+
+                                    Container(height: 60, width: 1, color: theme.subText.withOpacity(0.2), margin: const EdgeInsets.symmetric(horizontal: 10)),
+                                    
+                                    SizedBox(
+                                      width: 90,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            coupon.discount,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: canRedeem ? coupon.accentColor : Colors.grey,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "🔥 ${coupon.embersRequired}",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: canRedeem ? theme.accentColor : Colors.grey,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

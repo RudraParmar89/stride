@@ -3,6 +3,7 @@ import 'package:stride/features/active_session/focus_session_page.dart';
 import 'package:stride/features/active_session/run_tracker_page.dart';
 import 'package:stride/features/active_session/ml_exercise_page.dart';
 import 'package:stride/features/active_session/meditation_session_page.dart';
+import 'package:stride/theme/theme_manager.dart';
 
 class TaskCard extends StatefulWidget {
   final String title;
@@ -144,6 +145,8 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
   }
 
   void _showEnhancedTaskDetails(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -154,7 +157,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.black, Colors.grey.shade900],
+              colors: isDark
+                  ? [Colors.black, Colors.grey.shade900]
+                  : [Colors.grey.shade50, Colors.white],
             ),
           ),
           child: Column(
@@ -168,11 +173,13 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                     topRight: Radius.circular(24),
                   ),
                   gradient: LinearGradient(
-                    colors: [widget.color.withOpacity(0.3), widget.color.withOpacity(0.1)],
+                    colors: isDark
+                        ? [widget.color.withOpacity(0.3), widget.color.withOpacity(0.1)]
+                        : [widget.color.withOpacity(0.15), widget.color.withOpacity(0.05)],
                   ),
                   border: Border(
                     bottom: BorderSide(
-                      color: widget.color.withOpacity(0.3),
+                      color: widget.color.withOpacity(isDark ? 0.3 : 0.2),
                       width: 1,
                     ),
                   ),
@@ -184,7 +191,7 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                       height: 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: widget.color.withOpacity(0.2),
+                        color: widget.color.withOpacity(isDark ? 0.2 : 0.15),
                         border: Border.all(color: widget.color, width: 2),
                       ),
                       child: Center(
@@ -200,10 +207,10 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                         children: [
                           Text(
                             widget.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -234,20 +241,20 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          color: Colors.white.withOpacity(0.05),
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
                           border: Border.all(
-                            color: widget.color.withOpacity(0.2),
+                            color: widget.color.withOpacity(isDark ? 0.2 : 0.15),
                             width: 1.5,
                           ),
                         ),
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               "REWARDS",
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.grey,
+                                color: isDark ? Colors.grey : Colors.grey.shade700,
                                 letterSpacing: 1.2,
                               ),
                             ),
@@ -259,9 +266,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
-                                      color: widget.color.withOpacity(0.15),
+                                      color: widget.color.withOpacity(isDark ? 0.15 : 0.1),
                                       border: Border.all(
-                                        color: widget.color.withOpacity(0.3),
+                                        color: widget.color.withOpacity(isDark ? 0.3 : 0.25),
                                         width: 1,
                                       ),
                                     ),
@@ -276,12 +283,12 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        const Text(
+                                        Text(
                                           "EXPERIENCE",
                                           style: TextStyle(
                                             fontSize: 9,
                                             fontWeight: FontWeight.w700,
-                                            color: Colors.grey,
+                                            color: isDark ? Colors.grey : Colors.grey.shade600,
                                             letterSpacing: 0.5,
                                           ),
                                         ),
@@ -296,9 +303,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
-                                        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                                        color: const Color(0xFFFF6B6B).withOpacity(isDark ? 0.15 : 0.1),
                                         border: Border.all(
-                                          color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                                          color: const Color(0xFFFF6B6B).withOpacity(isDark ? 0.3 : 0.25),
                                           width: 1,
                                         ),
                                       ),
@@ -323,12 +330,12 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                             ],
                                           ),
                                           const SizedBox(height: 4),
-                                          const Text(
+                                          Text(
                                             "EMBERS",
                                             style: TextStyle(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w700,
-                                              color: Colors.grey,
+                                              color: isDark ? Colors.grey : Colors.grey.shade600,
                                               letterSpacing: 0.5,
                                             ),
                                           ),
@@ -344,12 +351,14 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                       ),
                       const SizedBox(height: 16),
                       _buildDetailSection(
+                        context,
                         "STATUS",
                         widget.isCompleted ? "✅ Completed" : "⏳ Pending",
                         widget.isCompleted ? Colors.green : Colors.orange,
                       ),
                       const SizedBox(height: 12),
                       _buildDetailSection(
+                        context,
                         "DIFFICULTY",
                         widget.xp > 60 ? "★★★ Hard" : widget.xp > 40 ? "★★ Medium" : "★ Easy",
                         widget.xp > 60 ? Colors.redAccent : widget.xp > 40 ? Colors.orange : Colors.greenAccent,
@@ -357,6 +366,7 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                       const SizedBox(height: 12),
                       if (widget.hasAntiChit) ...[
                         _buildDetailSection(
+                          context,
                           "PROTOCOL",
                           "🛡️ Active Verification Required",
                           Colors.cyan,
@@ -367,6 +377,7 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _buildDetailSection(
+                            context,
                             "TYPE",
                             "👤 Custom Task",
                             Colors.blue,
@@ -375,12 +386,12 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "BRIEF",
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Colors.grey,
+                              color: isDark ? Colors.grey : Colors.grey.shade700,
                               letterSpacing: 1.2,
                             ),
                           ),
@@ -390,9 +401,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              color: Colors.white.withOpacity(0.05),
+                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.2),
                                 width: 1,
                               ),
                             ),
@@ -400,9 +411,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                               widget.description.isNotEmpty
                                   ? widget.description
                                   : "Complete this protocol to maintain discipline and progress.",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.white70,
+                                color: isDark ? Colors.white70 : Colors.black54,
                                 height: 1.5,
                               ),
                             ),
@@ -418,7 +429,7 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: Colors.white.withOpacity(0.1),
+                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.2),
                       width: 1,
                     ),
                   ),
@@ -431,13 +442,13 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                           icon: const Icon(Icons.delete_outline, size: 18),
                           label: const Text("Delete"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.2),
+                            backgroundColor: Colors.red.withOpacity(isDark ? 0.2 : 0.15),
                             foregroundColor: Colors.red,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                             side: BorderSide(
-                              color: Colors.red.withOpacity(0.3),
+                              color: Colors.red.withOpacity(isDark ? 0.3 : 0.25),
                               width: 1,
                             ),
                           ),
@@ -453,13 +464,13 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                         icon: const Icon(Icons.close, size: 18),
                         label: const Text("Close"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          foregroundColor: Colors.white,
+                          backgroundColor: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.15),
+                          foregroundColor: isDark ? Colors.white : Colors.black87,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           side: BorderSide(
-                            color: Colors.white.withOpacity(0.2),
+                            color: isDark ? Colors.white.withOpacity(0.2) : Colors.grey.withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -496,16 +507,18 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildDetailSection(String label, String value, Color valueColor) {
+  Widget _buildDetailSection(BuildContext context, String label, String value, Color valueColor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Colors.grey,
+            color: isDark ? Colors.grey : Colors.grey.shade700,
             letterSpacing: 1.2,
           ),
         ),
@@ -515,9 +528,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: valueColor.withOpacity(0.15),
+            color: valueColor.withOpacity(isDark ? 0.15 : 0.1),
             border: Border.all(
-              color: valueColor.withOpacity(0.3),
+              color: valueColor.withOpacity(isDark ? 0.3 : 0.25),
               width: 1,
             ),
           ),
@@ -538,147 +551,153 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final bool isCompleted = widget.isCompleted;
 
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutQuart,
-      tween: Tween<double>(begin: 0, end: 1),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 50 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: GestureDetector(
-        onTap: _handleTap,
-        child: ScaleTransition(
-          scale: _scaleController,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: isCompleted ? widget.color.withOpacity(0.15) : Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isCompleted ? widget.color.withOpacity(0.6) : Colors.grey.shade800,
-                width: isCompleted ? 1.5 : 1,
-              ),
-              boxShadow: isCompleted
-                  ? [BoxShadow(color: widget.color.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: Row(
-              children: [
-                // CHECKBOX
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isCompleted ? widget.color : widget.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+    return ListenableBuilder(
+      listenable: ThemeManager(),
+      builder: (context, _) {
+        final theme = ThemeManager();
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOutQuart,
+          tween: Tween<double>(begin: 0, end: 1),
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 50 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
+            );
+          },
+          child: GestureDetector(
+            onTap: _handleTap,
+            child: ScaleTransition(
+              scale: _scaleController,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: isCompleted ? widget.color.withOpacity(0.15) : theme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isCompleted ? widget.color.withOpacity(0.6) : theme.textColor.withOpacity(0.05),
+                    width: isCompleted ? 1.5 : 1,
                   ),
-                  child: isCompleted
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-                      : Icon(Icons.circle_outlined, color: widget.color, size: 20),
+                  boxShadow: isCompleted
+                      ? [BoxShadow(color: widget.color.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]
+                      : [
+                          BoxShadow(
+                            color: theme.isDark ? Colors.black.withOpacity(0.04) : Colors.grey.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
-                const SizedBox(width: 14),
-
-                // TEXT INFO
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 300),
-                        style: TextStyle(
-                          color: isCompleted ? Colors.grey : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          decoration: isCompleted ? TextDecoration.lineThrough : null,
-                          decorationColor: widget.color,
-                        ),
-                        child: Text(widget.title),
+                child: Row(
+                  children: [
+                    // CHECKBOX
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isCompleted ? widget.color : widget.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 4),
-                      // CATEGORY LABEL
-                      Text(
-                        widget.tag.toUpperCase(),
-                        style: TextStyle(
-                          color: widget.color,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                      child: isCompleted
+                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                          : Icon(Icons.circle_outlined, color: widget.color, size: 20),
+                    ),
+                    const SizedBox(width: 14),
 
-                const SizedBox(width: 8),
-
-                // XP REWARD
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade800,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "+${widget.xp} XP",
-                    style: TextStyle(color: widget.color, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // 3-DOT MENU
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, color: Colors.grey.shade400, size: 20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onSelected: (v) {
-                    if (v == 'details') {
-                      _showEnhancedTaskDetails(context);
-                    } else if (v == 'delete' && widget.onDelete != null) {
-                      widget.onDelete!();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'details',
-                      child: Row(
+                    // TEXT INFO
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.info_outline, size: 18, color: Colors.blue),
-                          SizedBox(width: 10),
-                          Text('Details', style: TextStyle(color: Colors.blue)),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 300),
+                            style: TextStyle(
+                              color: isCompleted ? theme.subText : theme.textColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              decoration: isCompleted ? TextDecoration.lineThrough : null,
+                              decorationColor: widget.color,
+                            ),
+                            child: Text(widget.title),
+                          ),
+                          const SizedBox(height: 4),
+                          // CATEGORY LABEL
+                          Text(
+                            widget.tag.toUpperCase(),
+                            style: TextStyle(
+                              color: widget.color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    if (widget.isUserCreated && !widget.isCompleted)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                            SizedBox(width: 10),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
+
+                    const SizedBox(width: 8),
+
+                    // XP REWARD
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.bgColor,
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: Text(
+                        "+${widget.xp} XP",
+                        style: TextStyle(color: widget.color, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // 3-DOT MENU
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: theme.subText, size: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (v) {
+                        if (v == 'details') {
+                          _showEnhancedTaskDetails(context);
+                        } else if (v == 'delete' && widget.onDelete != null) {
+                          widget.onDelete!();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'details',
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                              SizedBox(width: 10),
+                              Text('Details', style: TextStyle(color: Colors.blue)),
+                            ],
+                          ),
+                        ),
+                        if (widget.isUserCreated && !widget.isCompleted)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                SizedBox(width: 10),
+                                Text('Delete', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

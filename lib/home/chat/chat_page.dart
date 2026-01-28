@@ -32,10 +32,10 @@ class _ChatPageState extends State<ChatPage> {
   bool _isTyping = false;
 
   // ⚠️ PASTE YOUR GROQ KEY HERE (starts with 'gsk_')
-  static const String _apiKey = 'RUDRAgsk_HI48F8lW67B4jcc7WGsPN7WGdyb3FYe7hs9GiMLUFIECZm2hpbHshU';
+  static const String _apiKey = 'HERE';
 
   // ✅ Groq uses the standard OpenAI-style API format
-  static const String _apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  static const String _apiUrl = 'HERE2';
 
   @override
   void initState() {

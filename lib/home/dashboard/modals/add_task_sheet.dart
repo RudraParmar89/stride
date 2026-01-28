@@ -16,21 +16,14 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   // --- COLOR LOGIC ---
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'strength':
-      case 'fitness':
-        return const Color(0xFFFF5252); // Red
-      case 'intellect':
-      case 'study':
-      case 'coding':
-        return const Color(0xFF6C63FF); // Purple
-      case 'vitality':
-      case 'health':
-        return const Color(0xFF00D2D3); // Cyan
-      case 'spirit':
-      case 'meditation':
-        return const Color(0xFFFFD700); // Gold
-      default:
-        return const Color(0xFF54A0FF); // Blue (Default)
+      case 'strength': return const Color(0xFFFF5252);      // Red
+      case 'intellect': return const Color(0xFF6C63FF);     // Purple
+      case 'vitality': return const Color(0xFF00D2D3);      // Cyan
+      case 'spirit': return const Color(0xFFFFD700);        // Yellow/Gold
+      case 'cardio': return const Color(0xFFFF7043);        // Orange
+      case 'order': return const Color(0xFF4FC3F7);         // Light Blue
+      case 'growth': return const Color(0xFF81C784);        // Green
+      default: return const Color(0xFF9575CD);              // Light Purple for General
     }
   }
 
@@ -119,7 +112,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: ["Strength", "Intellect", "Vitality", "Spirit"].map((type) {
+                children: ["Strength", "Intellect", "Vitality", "Spirit", "Cardio", "Order", "Growth"].map((type) {
                   bool isSelected = selectedClass == type;
                   Color categoryColor = _getCategoryColor(type);
 

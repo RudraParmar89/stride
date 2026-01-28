@@ -63,7 +63,8 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
     if (result != null && result['title'] != null) {
       controller.addTask(
           result['title'],
-          category: result['category'] ?? "General"
+          category: result['category'] ?? "General",
+          xpReward: result['xp'] ?? 50
       );
     }
   }
@@ -486,11 +487,14 @@ class _QuestTileState extends State<_QuestTile> with SingleTickerProviderStateMi
 
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'strength': return const Color(0xFFFF5252);
-      case 'intellect': return const Color(0xFF6C63FF);
-      case 'vitality': return const Color(0xFF00D2D3);
-      case 'spirit': return const Color(0xFFFFD700);
-      default: return const Color(0xFF54A0FF);
+      case 'strength': return const Color(0xFFFF5252);      // Red
+      case 'intellect': return const Color(0xFF6C63FF);     // Purple
+      case 'vitality': return const Color(0xFF00D2D3);      // Cyan
+      case 'spirit': return const Color(0xFFFFD700);        // Yellow/Gold
+      case 'cardio': return const Color(0xFFFF7043);        // Orange
+      case 'order': return const Color(0xFF4FC3F7);         // Light Blue
+      case 'growth': return const Color(0xFF81C784);        // Green
+      default: return const Color(0xFF9575CD);              // Light Purple for General
     }
   }
 
