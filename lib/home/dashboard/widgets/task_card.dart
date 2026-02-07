@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stride/features/active_session/focus_session_page.dart';
 import 'package:stride/features/active_session/run_tracker_page.dart';
 import 'package:stride/features/active_session/ml_exercise_page.dart';
@@ -551,10 +552,8 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final bool isCompleted = widget.isCompleted;
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, _) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, _) {
         return TweenAnimationBuilder<double>(
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOutQuart,

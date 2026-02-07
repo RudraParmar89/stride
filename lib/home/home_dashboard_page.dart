@@ -64,10 +64,8 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     final taskController = context.watch<TaskController>();
     final xpController = context.watch<XpController>();
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         return Scaffold(
           backgroundColor: theme.bgColor,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stride/theme/theme_manager.dart';
 
 class DashboardTaskTile extends StatelessWidget {
@@ -15,10 +16,8 @@ class DashboardTaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDone = task['isDone'];
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, _) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, _) {
         return GestureDetector(
           onTap: onToggle,
           child: Container(

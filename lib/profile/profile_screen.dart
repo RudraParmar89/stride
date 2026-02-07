@@ -290,74 +290,76 @@ class _ProfileScreenState extends State<ProfileScreen>
   //  UI COMPONENTS & MODALS
   // =========================================================
 
-  void _showIdentityCard(ThemeManager theme, String realName) {
+  void _showIdentityCard(String realName) {
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
-      builder: (context) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: theme.bgColor.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                  color: theme.accentColor.withOpacity(0.5), width: 2),
-              boxShadow: [
-                BoxShadow(
-                    color: theme.accentColor.withOpacity(0.2),
-                    blurRadius: 30,
-                    spreadRadius: 5)
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("IDENTITY CARD",
-                    style: TextStyle(
-                        color: theme.subText,
-                        fontSize: 10,
-                        letterSpacing: 3,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12)),
-                  child: QrImageView(
-                      data: "uid:$userId|name:$realName",
-                      version: QrVersions.auto,
-                      size: 180.0,
-                      backgroundColor: Colors.white),
-                ),
-                const SizedBox(height: 24),
-                Text(realName,
-                    style: TextStyle(
-                        color: theme.textColor,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1)),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border:
-                    Border.all(color: theme.accentColor.withOpacity(0.3)),
-                  ),
-                  child: Text("UNIT #$shortId",
+      builder: (context) => Consumer<ThemeManager>(
+        builder: (context, theme, child) => Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.bgColor.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                    color: theme.accentColor.withOpacity(0.5), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                      color: theme.accentColor.withOpacity(0.2),
+                      blurRadius: 30,
+                      spreadRadius: 5)
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("IDENTITY CARD",
                       style: TextStyle(
-                          color: theme.accentColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          color: theme.subText,
+                          fontSize: 10,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: QrImageView(
+                        data: "uid:$userId|name:$realName",
+                        version: QrVersions.auto,
+                        size: 180.0,
+                        backgroundColor: Colors.white),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(realName,
+                      style: TextStyle(
+                          color: theme.textColor,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 1)),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border:
+                      Border.all(color: theme.accentColor.withOpacity(0.3)),
+                    ),
+                    child: Text("UNIT #$shortId",
+                        style: TextStyle(
+                            color: theme.accentColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -365,123 +367,23 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _showAvatarSelection(ThemeManager theme) {
+  void _showAvatarSelection() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.60,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)
-          ],
-        ),
-        child: Column(
-          children: [
-            Center(
-                child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: theme.subText.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 24),
-            Text("IDENTITY MODIFICATION",
-                style: TextStyle(
-                    color: theme.textColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                    letterSpacing: 1)),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _pickCustomImage,
-                icon: Icon(Icons.upload_file, color: theme.accentColor),
-                label: Text("UPLOAD FROM NEURAL LINK",
-                    style: TextStyle(
-                        color: theme.accentColor,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1)),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: theme.accentColor.withOpacity(0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 20,
-                    mainAxisSpacing: 20),
-                itemCount: _avatarOptions.length,
-                itemBuilder: (context, index) {
-                  final String path = _avatarOptions[index];
-                  final bool isSelected = path == _selectedAvatar;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedAvatar = path);
-                      Hive.box('settingsBox').put('userAvatar', path);
-                      Navigator.pop(context);
-                      _triggerGlitch();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: isSelected
-                                ? theme.accentColor
-                                : Colors.transparent,
-                            width: 3),
-                        boxShadow: isSelected
-                            ? [
-                          BoxShadow(
-                              color: theme.accentColor.withOpacity(0.5),
-                              blurRadius: 15)
-                        ]
-                            : [],
-                      ),
-                      child: CircleAvatar(
-                          backgroundColor: theme.bgColor,
-                          backgroundImage: AssetImage(path)),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showThemeSettings(ThemeManager theme) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(builder: (context, setState) {
-        return Container(
+      builder: (context) => Consumer<ThemeManager>(
+        builder: (context, theme, child) => Container(
+          height: MediaQuery.of(context).size.height * 0.60,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)
-              ]),
+            color: theme.cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)
+            ],
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                   child: Container(
@@ -491,86 +393,190 @@ class _ProfileScreenState extends State<ProfileScreen>
                           color: theme.subText.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 24),
-              Row(children: [
-                Icon(Icons.palette_outlined, color: theme.accentColor),
-                const SizedBox(width: 12),
-                Text("INTERFACE CALIBRATION",
-                    style: TextStyle(
-                        color: theme.textColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        letterSpacing: 1))
-              ]),
-              const SizedBox(height: 30),
-              Container(
-                decoration: BoxDecoration(
-                    color: theme.bgColor,
-                    borderRadius: BorderRadius.circular(16)),
-                child: SwitchListTile(
-                  secondary: Icon(
-                      theme.isDark
-                          ? Icons.dark_mode_rounded
-                          : Icons.light_mode_rounded,
-                      color: theme.textColor),
-                  title: Text("Visual Interface",
-                      style: TextStyle(
-                          color: theme.textColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                      theme.isDark
-                          ? "Stealth Mode (Dark)"
-                          : "Daylight Mode (Light)",
-                      style: TextStyle(color: theme.subText, fontSize: 11)),
-                  activeColor: theme.accentColor,
-                  value: theme.isDark,
-                  onChanged: (val) {
-                    theme.toggleTheme(val);
-                    setState(() {});
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text("NEURAL LINK FREQUENCY",
+              Text("IDENTITY MODIFICATION",
                   style: TextStyle(
-                      color: theme.subText,
-                      fontSize: 10,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildColorDot(theme, const Color(0xFF00D2D3)),
-                  _buildColorDot(theme, const Color(0xFF00FF41)),
-                  _buildColorDot(theme, const Color(0xFFFFD700)),
-                  _buildColorDot(theme, const Color(0xFFFF5252)),
-                  _buildColorDot(theme, const Color(0xFF6C63FF)),
-                ],
-              ),
-              const SizedBox(height: 40),
+                      color: theme.textColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      letterSpacing: 1)),
+              const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.textColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: Text("CONFIRM SETTINGS",
+                child: OutlinedButton.icon(
+                  onPressed: _pickCustomImage,
+                  icon: Icon(Icons.upload_file, color: theme.accentColor),
+                  label: Text("UPLOAD FROM NEURAL LINK",
                       style: TextStyle(
-                          color: theme.bgColor,
+                          color: theme.accentColor,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: theme.accentColor.withOpacity(0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 20,
+                      mainAxisSpacing: 20),
+                  itemCount: _avatarOptions.length,
+                  itemBuilder: (context, index) {
+                    final String path = _avatarOptions[index];
+                    final bool isSelected = path == _selectedAvatar;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedAvatar = path);
+                        Hive.box('settingsBox').put('userAvatar', path);
+                        Navigator.pop(context);
+                        _triggerGlitch();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: isSelected
+                                  ? theme.accentColor
+                                  : Colors.transparent,
+                              width: 3),
+                          boxShadow: isSelected
+                              ? [
+                            BoxShadow(
+                                color: theme.accentColor.withOpacity(0.5),
+                                blurRadius: 15)
+                          ]
+                              : [],
+                        ),
+                        child: CircleAvatar(
+                            backgroundColor: theme.bgColor,
+                            backgroundImage: AssetImage(path)),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
-        );
-      }),
+        ),
+      ),
+    );
+  }
+
+  void _showThemeSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Consumer<ThemeManager>(
+        builder: (context, theme, child) => StatefulBuilder(builder: (context, setState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)
+                ]),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: theme.subText.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Icon(Icons.palette_outlined, color: theme.accentColor),
+                  const SizedBox(width: 12),
+                  Text("INTERFACE CALIBRATION",
+                      style: TextStyle(
+                          color: theme.textColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: 1))
+                ]),
+                const SizedBox(height: 30),
+                Container(
+                  decoration: BoxDecoration(
+                      color: theme.bgColor,
+                      borderRadius: BorderRadius.circular(16)),
+                  child: SwitchListTile(
+                    secondary: Icon(
+                        theme.isDark
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
+                        color: theme.textColor),
+                    title: Text("Visual Interface",
+                        style: TextStyle(
+                            color: theme.textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                        theme.isDark
+                            ? "Stealth Mode (Dark)"
+                            : "Daylight Mode (Light)",
+                        style: TextStyle(color: theme.subText, fontSize: 11)),
+                    activeColor: theme.accentColor,
+                    value: theme.isDark,
+                    onChanged: (val) {
+                      theme.toggleTheme(val);
+                      setState(() {});
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text("NEURAL LINK FREQUENCY",
+                    style: TextStyle(
+                        color: theme.subText,
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildColorDot(theme, const Color(0xFF00D2D3)),
+                    _buildColorDot(theme, const Color(0xFF00FF41)),
+                    _buildColorDot(theme, const Color(0xFFFFD700)),
+                    _buildColorDot(theme, const Color(0xFFFF5252)),
+                    _buildColorDot(theme, const Color(0xFF6C63FF)),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.textColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text("CONFIRM SETTINGS",
+                        style: TextStyle(
+                            color: theme.bgColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 
@@ -1042,7 +1048,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildGlitchAvatar(ThemeManager theme, Color color) {
     return GestureDetector(
-      onTap: () => _showAvatarSelection(theme),
+      onTap: () => _showAvatarSelection(),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
         transform: _isGlitching
@@ -1661,10 +1667,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         final String realName =
             userProfile?.callsign.toUpperCase() ?? "COMMANDER";
 
-        return ListenableBuilder(
-            listenable: ThemeManager(),
-            builder: (context, child) {
-              final theme = ThemeManager();
+        return Consumer<ThemeManager>(
+            builder: (context, theme, child) {
               return Scaffold(
                 backgroundColor: Colors.transparent,
                 body: Stack(
@@ -1744,7 +1748,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ),
                               GestureDetector(
                                   onTap: () =>
-                                      _showIdentityCard(theme, realName),
+                                      _showIdentityCard(realName),
                                   child: _buildAnimatedScanner(theme)),
                             ],
                           ),
@@ -1776,7 +1780,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               "Interface Calibration",
                               "Visual & Neural Frequency",
                               isHighlighted: true,
-                              onTap: () => _showThemeSettings(theme)),
+                              onTap: () => _showThemeSettings()),
 
                           _buildSystemTile(
                               theme,

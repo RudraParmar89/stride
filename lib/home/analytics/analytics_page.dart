@@ -258,11 +258,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> with TickerProviderStateM
   Widget build(BuildContext context) {
     final xpController = context.watch<XpController>();
 
-    return ListenableBuilder(
-        listenable: ThemeManager(),
-        builder: (context, child) {
-          final theme = ThemeManager();
-          return Scaffold(
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
+        return Scaffold(
             backgroundColor: theme.bgColor,
             body: SafeArea(
               bottom: false,

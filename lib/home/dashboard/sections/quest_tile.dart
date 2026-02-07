@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/theme_manager.dart';
 import '../../../../models/task.dart';
 
@@ -64,10 +65,8 @@ class _QuestTileState extends State<QuestTile> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final accent = _getCategoryColor(widget.task.category);
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, _) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, _) {
         final bool isCompleted = widget.task.isCompleted;
 
         return GestureDetector(

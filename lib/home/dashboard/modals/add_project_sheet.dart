@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/theme_manager.dart';
 
 class AddProjectSheet extends StatefulWidget {
@@ -24,10 +25,8 @@ class _AddProjectSheetState extends State<AddProjectSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         return Container(
           padding: const EdgeInsets.all(24),

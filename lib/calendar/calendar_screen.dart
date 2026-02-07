@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart'; // ✅ Added for persistence
@@ -141,10 +142,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
         const Color accentRed = Color(0xFFFF5252);
         const Color accentGold = Color(0xFFFFD700);
 

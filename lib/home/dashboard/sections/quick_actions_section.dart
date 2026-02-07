@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/theme_manager.dart'; // <--- IMPORT THEME MANAGER
 import '../../../../clock/clock_screen.dart';
 

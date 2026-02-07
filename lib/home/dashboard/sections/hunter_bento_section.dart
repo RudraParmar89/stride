@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/theme_manager.dart';
 
 class HunterBentoSection extends StatefulWidget {
@@ -23,10 +24,8 @@ class _HunterBentoSectionState extends State<HunterBentoSection> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         double taskProgress =
             widget.totalTasks > 0 ? (widget.completedTasks / widget.totalTasks) : 0.0;

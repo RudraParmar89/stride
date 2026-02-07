@@ -45,10 +45,8 @@ class HeaderSection extends StatelessWidget {
     // 1. Get the User Box
     final userBox = Hive.box<UserProfile>('userBox');
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
         const Color emberColor = Color(0xFFFF9900);
 
         return Column(

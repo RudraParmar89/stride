@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../theme/theme_manager.dart'; // <--- IMPORT THEME MANAGER
+import 'package:provider/provider.dart';
+import '../../../../theme/theme_manager.dart';
 
 class SideQuestSection extends StatelessWidget {
   final VoidCallback onTap;
@@ -9,10 +10,8 @@ class SideQuestSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 1. LISTEN TO THEME
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         return GestureDetector(
           onTap: onTap,

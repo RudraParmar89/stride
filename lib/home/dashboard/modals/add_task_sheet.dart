@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/theme_manager.dart';
 
 class AddTaskSheet extends StatefulWidget {
@@ -32,10 +33,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     // 1. Get the dynamic color for the currently selected class
     final Color activeColor = _getCategoryColor(selectedClass);
 
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         return Container(
           padding: const EdgeInsets.all(24),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'dart:async';
 import 'dart:ui';
@@ -30,10 +31,8 @@ class _ClockScreenState extends State<ClockScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeManager(),
-      builder: (context, child) {
-        final theme = ThemeManager();
+    return Consumer<ThemeManager>(
+      builder: (context, theme, child) {
 
         return Scaffold(
           backgroundColor: theme.bgColor,
